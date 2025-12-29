@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import SessionStart from './components/SessionStart';
 import GameDesk from './components/GameDesk';
+import AudioControls from './components/AudioControls';
 import { audioManager } from './audio/AudioManager';
 import './App.css';
 
@@ -55,6 +56,8 @@ function App() {
 
   return (
     <div className="app">
+      <AudioControls />
+
       <header className="app-header">
         <h1>⛏️ SEND ME HOME</h1>
         <p className="subtitle">Transit Desk - Asteroid Mining Station Delta-7</p>
