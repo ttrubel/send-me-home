@@ -1,0 +1,45 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Courier New', monospace;
+  background: #1a1a2e;
+  color: #eee;
+  line-height: 1.6;
+}
+
+#root {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+button {
+  font-family: 'Courier New', monospace;
+  font-size: 16px;
+  padding: 12px 24px;
+  cursor: pointer;
+  border: 2px solid #0f3460;
+  background: #16213e;
+  color: #eee;
+  transition: all 0.2s;
+}
+
+button:hover:not(:disabled) {
+  background: #0f3460;
+  border-color: #e94560;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}

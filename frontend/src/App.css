@@ -1,0 +1,44 @@
+.app {
+  min-height: 100vh;
+}
+
+.app-header {
+  text-align: center;
+  padding: 20px;
+  background: #0f3460;
+  border-bottom: 3px solid #e94560;
+  margin-bottom: 30px;
+}
+
+.app-header h1 {
+  font-size: 2.5rem;
+  letter-spacing: 4px;
+  margin-bottom: 10px;
+  color: #e94560;
+}
+
+.subtitle {
+  color: #888;
+  font-size: 0.9rem;
+  letter-spacing: 2px;
+}
+
+.app-main {
+  padding: 20px;
+}
+
+.session-complete {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.session-complete h2 {
+  font-size: 2rem;
+  margin-bottom: 20px;
+  color: #e94560;
+}
+
+.session-complete button {
+  margin-top: 20px;
+  font-size: 18px;
+}

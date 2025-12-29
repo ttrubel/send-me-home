@@ -1,0 +1,64 @@
+# Dependencies
+node_modules/
+vendor/
+
+# Build outputs
+dist/
+build/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Backend (Go)
+backend/bin/
+backend/tmp/
+*.test
+*.out
+coverage.txt
+
+# Frontend
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+frontend/build/
+frontend/coverage/
+
+# IDEs
+.vscode/*
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+
+# GCP credentials (never commit these)
+*.json
+!tsconfig.json
+!package.json
+
+# Firebase/Firestore
+.firebase/
+firebase-debug.log
+firestore-debug.log

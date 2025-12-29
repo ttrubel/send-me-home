@@ -1,0 +1,178 @@
+syntax = "proto3";
+
+package game.v1;
+
+option go_package = "github.com/ttrubel/send-me-home/gen/game/v1;gamev1";
+
+// GameService handles all game logic
+service GameService {
+  // Start a new session - generates all cases upfront
+  rpc StartSession(StartSessionRequest) returns (stream StartSessionResponse);
+
+  // Get next case from pre-generated queue
+  rpc GetNextCase(GetNextCaseRequest) returns (GetNextCaseResponse);
+
+  // Ask NPC a question - real-time response with streaming audio
+  rpc AskQuestion(AskQuestionRequest) returns (stream AskQuestionResponse);
+
+  // Use secondary check (limited quota)
+  rpc SecondaryCheck(SecondaryCheckRequest) returns (SecondaryCheckResponse);
+
+  // Resolve case with player decision
+  rpc ResolveCase(ResolveCaseRequest) returns (ResolveCaseResponse);
+
+  // Get session status
+  rpc GetSessionStatus(GetSessionStatusRequest) returns (GetSessionStatusResponse);
+}
+
+// ============================================================================
+// StartSession
+// ============================================================================
+
+message StartSessionRequest {
+  // Optional: difficulty level, number of cases, etc.
+  int32 num_cases = 1; // default: 15
+}
+
+message StartSessionResponse {
+  oneof update {
+    SessionProgress progress = 1;
+    SessionReady ready = 2;
+  }
+}
+
+message SessionProgress {
+  int32 current = 1;
+  int32 total = 2;
+  string message = 3; // "Generating case 5/20..."
+}
+
+message SessionReady {
+  string session_id = 1;
+  repeated string rules = 2; // Daily rules
+  int32 total_cases = 3;
+  int32 secondary_checks_quota = 4; // e.g., 3
+}
+
+// ============================================================================
+// GetNextCase
+// ============================================================================
+
+message GetNextCaseRequest {
+  string session_id = 1;
+}
+
+message GetNextCaseResponse {
+  string case_id = 1;
+  NPCProfile npc = 2;
+  repeated Document documents = 3;
+  string opening_line = 4;
+  bytes opening_audio = 5; // Pre-generated MP3
+  int32 case_number = 6; // e.g., 3 of 15
+  int32 remaining_secondary_checks = 7;
+}
+
+// ============================================================================
+// AskQuestion
+// ============================================================================
+
+message AskQuestionRequest {
+  string session_id = 1;
+  string case_id = 2;
+  string question = 3;
+}
+
+message AskQuestionResponse {
+  oneof chunk {
+    string text_chunk = 1; // NPC response text (for subtitles)
+    bytes audio_chunk = 2; // Audio stream (when ElevenLabs integrated)
+    bool done = 3;
+  }
+}
+
+// ============================================================================
+// SecondaryCheck
+// ============================================================================
+
+message SecondaryCheckRequest {
+  string session_id = 1;
+  string case_id = 2;
+  string employee_id = 3; // From document
+}
+
+message SecondaryCheckResponse {
+  bool valid = 1;
+  string message = 2; // e.g., "Contract verified: Term ends 2024-12-30"
+  int32 remaining_checks = 3;
+}
+
+// ============================================================================
+// ResolveCase
+// ============================================================================
+
+message ResolveCaseRequest {
+  string session_id = 1;
+  string case_id = 2;
+  Decision decision = 3;
+}
+
+message ResolveCaseResponse {
+  bool correct = 1;
+  string verdict = 2; // Explanation of what was right/wrong
+  repeated string contradictions_found = 3; // What player should have caught
+  int32 score_delta = 4; // Points earned/lost
+  int32 total_score = 5;
+  CaseOutcome outcome = 6;
+}
+
+enum CaseOutcome {
+  CASE_OUTCOME_UNSPECIFIED = 0;
+  CASE_OUTCOME_CORRECT_APPROVE = 1;
+  CASE_OUTCOME_CORRECT_DENY = 2;
+  CASE_OUTCOME_WRONG_APPROVE = 3; // Should have denied
+  CASE_OUTCOME_WRONG_DENY = 4; // Should have approved
+}
+
+// ============================================================================
+// GetSessionStatus
+// ============================================================================
+
+message GetSessionStatusRequest {
+  string session_id = 1;
+}
+
+message GetSessionStatusResponse {
+  int32 cases_completed = 1;
+  int32 total_cases = 2;
+  int32 total_score = 3;
+  int32 correct_decisions = 4;
+  int32 incorrect_decisions = 5;
+  int32 remaining_secondary_checks = 6;
+  bool session_complete = 7;
+}
+
+// ============================================================================
+// Common Types
+// ============================================================================
+
+message NPCProfile {
+  string name = 1;
+  string role = 2; // e.g., "Drill Operator", "Maintenance Tech"
+  string department = 3;
+  string personality = 4; // e.g., "tired", "angry", "nervous"
+  string portrait_url = 5; // Optional: URL to generated portrait
+  string demeanor = 6; // e.g., "evasive", "cooperative", "frustrated"
+}
+
+message Document {
+  string type = 1; // "contract", "shift_log", "clearance_badge"
+  map<string, string> fields = 2; // Key-value pairs of document data
+  string visual_url = 3; // Optional: rendered document image
+}
+
+enum Decision {
+  DECISION_UNSPECIFIED = 0;
+  DECISION_APPROVE = 1;
+  DECISION_DENY = 2;
+  DECISION_SECONDARY = 3;
+}
