@@ -328,8 +328,16 @@ func (h *GameHandler) GetSessionStatus(
 ) (*connect.Response[gamev1.GetSessionStatusResponse], error) {
 	session, err := h.firestore.GetSession(ctx, req.Msg.SessionId)
 	if err != nil {
+		log.Printf("ERROR GetSessionStatus: Session not found: %s, error: %v", req.Msg.SessionId, err)
 		return nil, connect.NewError(connect.CodeNotFound, err)
 	}
+
+	log.Printf("GetSessionStatus called for session %s:", req.Msg.SessionId)
+	log.Printf("  CurrentCaseIndex: %d", session.CurrentCaseIndex)
+	log.Printf("  Total Cases: %d", len(session.Cases))
+	log.Printf("  Score: %d", session.Score)
+	log.Printf("  Correct: %d", session.CorrectDecisions)
+	log.Printf("  Incorrect: %d", session.IncorrectDecisions)
 
 	response := &gamev1.GetSessionStatusResponse{
 		CasesCompleted:           int32(session.CurrentCaseIndex),

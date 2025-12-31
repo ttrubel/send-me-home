@@ -153,7 +153,7 @@ TODAY'S RULES:
 - %s
 
 Generate %d NPC worker cases. Each worker has TWO documents:
-1. EMPLOYEE BADGE: name, picture (use: https://api.dicebear.com/7.x/bottts/svg?seed=unique-seed), job_title, issue_date, expire_date, company_name
+1. EMPLOYEE BADGE: name, picture (MUST be exactly "USE_CASE_ID_AS_SEED"), job_title, issue_date, expire_date, company_name
 2. CLEARANCE FORM: name, shift_status (one of: "COMPLETE", "INCOMPLETE", "OVERTIME"), cargo1, cargo2
 
 SHIFT STATUS MUST BE CLEAR:
@@ -166,6 +166,15 @@ CARGO MUST BE CLEAR AND SPECIFIC:
 - COMPANY PROPERTY (violation): "Delta-7 drill bit", "Company mining equipment", "Work helmet", "Safety vest", "Company radio", "Excavation tools"
 - CONTRABAND (violation): "Ore samples", "Mineral specimens", "Asteroid fragments", "Unauthorized samples"
 - DO NOT use ambiguous items like "Research equipment" or "Tools" - be SPECIFIC about whether personal or company
+
+NAME GENERATION - CRITICAL RULES:
+- Generate UNIQUE, DIVERSE names for EVERY worker - NO REPETITION across all cases
+- Use REALISTIC international names from varied cultures (Asian, African, European, Latin American, Middle Eastern, etc.)
+- BANNED names - NEVER use: "Elara", "Kael", "Zephyr", "Lyra", "Anya", "Priya Sharma", "Omar Hassan" (overused)
+- Mix cultural backgrounds: pair different ethnic first names with different ethnic last names
+- Use uncommon but realistic combinations to ensure variety
+- Think of actual real-world names you rarely see together
+- EVERY case MUST have a completely different name from all others
 
 Each case should have:
 1. An NPC profile (name, role, department, personality, demeanor)
@@ -189,7 +198,7 @@ Return ONLY valid JSON with this exact structure:
   "cases": [
     {
       "npc": {
-        "name": "John Smith",
+        "name": "Carlos Mendez",
         "role": "Mining Engineer",
         "department": "Excavation",
         "personality": "tired",
@@ -197,8 +206,8 @@ Return ONLY valid JSON with this exact structure:
       },
       "documents": {
         "employee_badge": {
-          "name": "John Smith",
-          "picture": "https://api.dicebear.com/7.x/bottts/svg?seed=john-smith-123",
+          "name": "Carlos Mendez",
+          "picture": "USE_CASE_ID_AS_SEED",
           "job_title": "Mining Engineer",
           "issue_date": "YYYY-MM-DD (must be before today)",
           "expire_date": "YYYY-MM-DD (after today if valid, before if violation)",
@@ -276,8 +285,16 @@ Return ONLY valid JSON with this exact structure:
 	// Convert to models.Case
 	cases := make([]models.Case, len(response.Cases))
 	for i, geminiCase := range response.Cases {
+		caseID := fmt.Sprintf("case-%d", i+1)
+
+		// Fix badge picture URL to use caseID as seed
+		badgeFields := geminiCase.Documents.EmployeeBadge
+		if picture, ok := badgeFields["picture"]; ok && picture == "USE_CASE_ID_AS_SEED" {
+			badgeFields["picture"] = fmt.Sprintf("https://api.dicebear.com/7.x/bottts/svg?seed=%s&backgroundColor=1a3a52&scale=90", caseID)
+		}
+
 		cases[i] = models.Case{
-			CaseID: fmt.Sprintf("case-%d", i+1),
+			CaseID: caseID,
 			NPC: models.NPCProfile{
 				Name:        geminiCase.NPC.Name,
 				Role:        geminiCase.NPC.Role,
@@ -287,7 +304,7 @@ Return ONLY valid JSON with this exact structure:
 				Demeanor:    geminiCase.NPC.Demeanor,
 			},
 			Documents: []models.Document{
-				{Type: "employee_badge", Fields: geminiCase.Documents.EmployeeBadge},
+				{Type: "employee_badge", Fields: badgeFields},
 				{Type: "clearance_form", Fields: geminiCase.Documents.ClearanceForm},
 			},
 			OpeningLine: geminiCase.OpeningLine,
@@ -384,23 +401,29 @@ func (c *Client) GenerateVerdict(ctx context.Context, caseData models.Case, play
 		contradictions = strings.Join(caseData.Contradictions, "; ")
 	}
 
-	prompt := fmt.Sprintf(`You are explaining the outcome of a document inspection decision in a Papers, Please-style game.
+	prompt := fmt.Sprintf(`You are a transit supervisor evaluating a clerk's document inspection decision in a Papers, Please-style game.
 
 CASE DETAILS:
 - Worker: %s (%s)
 - Correct decision: %s
-- Player decision: %s
+- Clerk's decision: %s
 - Ground truth: %s
 - Contradictions: %s
 
-Generate a 1-2 sentence explanation of why the player was correct or incorrect.
+IMPORTANT - PERSPECTIVE:
+- Address the PLAYER (the clerk making the decision)
+- Provide feedback on the CLERK'S performance, NOT the worker's
+- DO NOT say things like "Worker good job" or praise the worker
+- DO say things like "Correct decision, clerk!" or "Wrong call!"
 
-If correct: Praise briefly and explain what they caught.
-If incorrect: Explain what they missed and what the correct decision was.
+Generate a 1-2 sentence verdict addressing the clerk.
 
-Be concise and professional like a transit supervisor.
+If correct: Praise the clerk and explain what they correctly identified (e.g., "Good catch, clerk! You correctly spotted the expired badge.")
+If incorrect: Tell the clerk they made a mistake and explain what they missed (e.g., "Wrong decision! You failed to notice their shift status was INCOMPLETE.")
 
-Your explanation:`,
+Be concise and professional like a transit supervisor evaluating their clerk.
+
+Your verdict:`,
 		caseData.NPC.Name,
 		caseData.NPC.Role,
 		caseData.CorrectDecision,
@@ -552,8 +575,10 @@ func (c *Client) generateMockCase(index int, gameDate string) models.Case {
 	badgeIssueDate := parsedDate.AddDate(0, -6, 0).Format("2006-01-02")
 	badgeExpireDate := parsedDate.AddDate(0, 6, 0).Format("2006-01-02")
 
+	caseID := fmt.Sprintf("case-%d", index)
+
 	return models.Case{
-		CaseID: fmt.Sprintf("case-%d", index),
+		CaseID: caseID,
 		NPC: models.NPCProfile{
 			Name:        workerName,
 			Role:        jobTitle,
@@ -567,7 +592,7 @@ func (c *Client) generateMockCase(index int, gameDate string) models.Case {
 				Type: "employee_badge",
 				Fields: map[string]string{
 					"name":         workerName,
-					"picture":      fmt.Sprintf("https://api.dicebear.com/7.x/bottts/svg?seed=worker-%d", index),
+					"picture":      fmt.Sprintf("https://api.dicebear.com/7.x/bottts/svg?seed=%s&backgroundColor=1a3a52&scale=90", caseID),
 					"job_title":    jobTitle,
 					"issue_date":   badgeIssueDate,
 					"expire_date":  badgeExpireDate,

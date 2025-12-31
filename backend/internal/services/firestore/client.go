@@ -83,9 +83,9 @@ func (c *Client) IncrementCaseIndex(ctx context.Context, sessionID string) error
 		return fmt.Errorf("session not found: %s", sessionID)
 	}
 
-	if session.CurrentCaseIndex < len(session.Cases)-1 {
-		session.CurrentCaseIndex++
-	}
+	// Always increment to track completed cases
+	// CurrentCaseIndex will equal len(session.Cases) when all cases are done
+	session.CurrentCaseIndex++
 
 	return nil
 }

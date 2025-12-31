@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { gameClient } from '../api/client';
-import { Decision } from '../gen/game/v1/game_pb';
-import type { NPCProfile, Document } from '../gen/game/v1/game_pb';
 import { audioManager } from '../audio/AudioManager';
+import type { Document, NPCProfile } from '../gen/game/v1/game_pb';
+import { Decision } from '../gen/game/v1/game_pb';
 import './GameDesk.css';
 
 interface GameDeskProps {
@@ -90,6 +90,9 @@ function GameDesk({ sessionId, gameDate, rules, totalCases, onComplete }: GameDe
           });
         } catch (statsError) {
           console.error('Failed to fetch session stats:', statsError);
+          console.error('Session ID:', sessionId);
+          console.error('Error details:', JSON.stringify(statsError, null, 2));
+          alert('ERROR: Failed to fetch final stats. Check console for details.');
           // Fallback with current score
           onComplete({
             totalScore: score,
@@ -181,7 +184,10 @@ function GameDesk({ sessionId, gameDate, rules, totalCases, onComplete }: GameDe
           accuracy,
         });
       } catch (statsError) {
-        console.error('Failed to fetch session stats:', statsError);
+        console.error('Failed to fetch session stats (handleNextCase):', statsError);
+        console.error('Session ID:', sessionId);
+        console.error('Error details:', JSON.stringify(statsError, null, 2));
+        alert('ERROR: Failed to fetch final stats. Check console for details.');
         // Fallback with current score
         onComplete({
           totalScore: score,
@@ -249,9 +255,15 @@ function GameDesk({ sessionId, gameDate, rules, totalCases, onComplete }: GameDe
                   {Object.entries(doc.fields).map(([key, value]) => {
                     // Don't render picture field as text for employee badge
                     if (key === 'picture' && doc.type === 'employee_badge') return null;
+
+                    // Format label: replace underscores with spaces and add space before numbers
+                    const formattedLabel = key
+                      .replace(/_/g, ' ')
+                      .replace(/(\d+)/g, ' $1');
+
                     return (
                       <div key={key} className="field-row">
-                        <span className="field-label">{key}</span>
+                        <span className="field-label">{formattedLabel}</span>
                         <span className="field-value">{value}</span>
                       </div>
                     );
@@ -332,7 +344,6 @@ function GameDesk({ sessionId, gameDate, rules, totalCases, onComplete }: GameDe
               >
                 <div className="btn-icon">✓</div>
                 <div className="btn-text">APPROVE</div>
-                <div className="btn-subtitle">Let them board</div>
               </button>
 
               <button
@@ -342,20 +353,6 @@ function GameDesk({ sessionId, gameDate, rules, totalCases, onComplete }: GameDe
               >
                 <div className="btn-icon">✗</div>
                 <div className="btn-text">DENY</div>
-                <div className="btn-subtitle">Send them back</div>
-              </button>
-
-              <button
-                className="decision-btn btn-manager"
-                onClick={() => {
-                  audioManager.playSecondaryCheckSound();
-                  alert('Manager check not yet implemented');
-                }}
-                disabled={loading || currentCase.remainingSecondaryChecks <= 0}
-              >
-                <div className="btn-icon">👤</div>
-                <div className="btn-text">CALL MANAGER</div>
-                <div className="btn-subtitle">{currentCase.remainingSecondaryChecks}/3 uses left</div>
               </button>
             </div>
           ) : (
