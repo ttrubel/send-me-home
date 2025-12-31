@@ -32,7 +32,10 @@ function App() {
     const initAudio = async () => {
       if (!audioInitialized) {
         await audioManager.initialize();
-        audioManager.playBackgroundMusic();
+        // Only play background music if not muted
+        if (!audioManager.isMuted()) {
+          audioManager.playBackgroundMusic();
+        }
         setAudioInitialized(true);
       }
     };

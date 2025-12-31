@@ -10,9 +10,32 @@ export class AudioManager {
   private sfxGain: GainNode | null = null;
   private isInitialized = false;
   private isMusicPlaying = false;
+  private defaultMusicVolume = 0.3;
+  private defaultSFXVolume = 0.4;
 
   constructor() {
     // Audio context must be created after user interaction
+  }
+
+  /**
+   * Check if audio is muted from localStorage
+   */
+  isMuted(): boolean {
+    return localStorage.getItem('audioMuted') === 'true';
+  }
+
+  /**
+   * Get the default music volume (used when unmuting)
+   */
+  getDefaultMusicVolume(): number {
+    return this.defaultMusicVolume;
+  }
+
+  /**
+   * Get the default SFX volume (used when unmuting)
+   */
+  getDefaultSFXVolume(): number {
+    return this.defaultSFXVolume;
   }
 
   /**
@@ -25,11 +48,14 @@ export class AudioManager {
 
     // Create gain nodes for volume control
     this.musicGain = this.audioContext.createGain();
-    this.musicGain.gain.value = 0.3; // Background music at 30%
-    this.musicGain.connect(this.audioContext.destination);
-
     this.sfxGain = this.audioContext.createGain();
-    this.sfxGain.gain.value = 0.4; // Sound effects at 40%
+
+    // Set initial volumes based on mute state
+    const muted = this.isMuted();
+    this.musicGain.gain.value = muted ? 0 : this.defaultMusicVolume;
+    this.sfxGain.gain.value = muted ? 0 : this.defaultSFXVolume;
+
+    this.musicGain.connect(this.audioContext.destination);
     this.sfxGain.connect(this.audioContext.destination);
 
     this.isInitialized = true;
