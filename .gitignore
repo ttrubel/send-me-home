@@ -57,6 +57,7 @@ temp/
 *.json
 !tsconfig.json
 !package.json
+!package-lock.json
 
 # Firebase/Firestore
 .firebase/
