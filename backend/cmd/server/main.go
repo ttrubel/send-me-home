@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 
 	"connectrpc.com/connect"
 	"github.com/rs/cors"
@@ -56,6 +58,34 @@ func main() {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("OK"))
 	})
+
+	// Serve frontend static files
+	publicDir := "./public"
+	if _, err := os.Stat(publicDir); err == nil {
+		// Serve static files for all non-API routes
+		fileServer := http.FileServer(http.Dir(publicDir))
+		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			// Don't serve static files for API routes
+			if len(r.URL.Path) >= 5 && r.URL.Path[:5] == "/game" {
+				http.NotFound(w, r)
+				return
+			}
+
+			// Try to serve the file
+			path := filepath.Join(publicDir, r.URL.Path)
+			if _, err := os.Stat(path); os.IsNotExist(err) {
+				// File doesn't exist, serve index.html for SPA routing
+				http.ServeFile(w, r, filepath.Join(publicDir, "index.html"))
+				return
+			}
+
+			// Serve the file
+			fileServer.ServeHTTP(w, r)
+		})
+		log.Printf("Serving frontend static files from %s", publicDir)
+	} else {
+		log.Printf("No frontend static files found at %s (API-only mode)", publicDir)
+	}
 
 	// Setup CORS
 	corsHandler := cors.New(cors.Options{

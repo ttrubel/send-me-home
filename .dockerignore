@@ -1,0 +1,53 @@
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+docs/
+
+# IDE
+.vscode/
+.idea/
+.claude/
+
+# Environment files
+.env
+.env.local
+.env.*
+gcp-key.json
+
+# Node modules (will be installed in build)
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+
+# Go build artifacts
+backend/bin/
+backend/tmp/
+backend/*.exe
+backend/*.dll
+backend/*.so
+backend/*.dylib
+
+# Test files
+backend/**/*_test.go
+frontend/**/*.test.ts
+frontend/**/*.test.tsx
+frontend/**/*.spec.ts
+frontend/**/*.spec.tsx
+coverage/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Deployment files (not needed in image)
+Dockerfile
+docker-compose.yml
+.dockerignore
+deploy.sh
+.github/

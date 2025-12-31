@@ -50,6 +50,54 @@ cd frontend
 npm run dev
 ```
 
+## Deployment
+
+### Quick Deployment
+
+Use the interactive deployment script:
+
+```bash
+./deploy.sh
+```
+
+This will guide you through:
+1. Local deployment with Docker Compose
+2. Deployment to Google Cloud Run
+3. Building Docker images only
+
+### Docker Compose (Local)
+
+```bash
+# Configure environment
+cp .env.example .env
+# Edit .env with your credentials
+
+# Start application
+make docker-up
+
+# View logs
+docker-compose logs -f
+
+# Stop
+make docker-down
+```
+
+Access: http://localhost:8080
+
+**Note:** Single unified container serves both frontend and API.
+
+### Google Cloud Run (Production)
+
+```bash
+# Set your project ID
+export GCP_PROJECT_ID=your-project-id
+
+# Deploy
+make deploy-gcp
+```
+
+See [DEPLOY_SIMPLE.md](./DEPLOY_SIMPLE.md) for simplified deployment guide or [DEPLOYMENT.md](./DEPLOYMENT.md) for advanced options.
+
 ## Development
 
 ### Using Make Commands
@@ -72,6 +120,11 @@ make test
 
 # Clean build artifacts
 make clean
+
+# Docker commands
+make docker-build    # Build images
+make docker-up       # Start services
+make docker-down     # Stop services
 ```
 
 ### API Documentation
@@ -132,34 +185,56 @@ send-me-home/
 
 ## Environment Variables
 
-### Backend (.env in backend/)
-```
-PORT=8080
-GEMINI_API_KEY=your_gemini_api_key
-ELEVENLABS_API_KEY=your_elevenlabs_api_key
-FIRESTORE_PROJECT_ID=your_project_id
-```
+Create a `.env` file in the project root (see `.env.example`):
 
-### Frontend (.env in frontend/)
-```
+```bash
+# Google Cloud / Vertex AI Configuration
+GOOGLE_GENAI_USE_VERTEXAI=true
+GOOGLE_CLOUD_PROJECT=your-gcp-project-id
+GCP_CREDENTIALS_PATH=./gcp-key.json
+
+# ElevenLabs API Key
+ELEVENLABS_API_KEY=your-elevenlabs-api-key
+
+# Firestore (optional)
+FIRESTORE_PROJECT_ID=your-firestore-project-id
+
+# Frontend API URL
 VITE_API_URL=http://localhost:8080
 ```
 
-## Next Steps
+For development without API keys, set `GOOGLE_GENAI_USE_VERTEXAI=false` to use mock data.
 
-See individual README files for more details:
-- [Backend README](./backend/README.md)
-- [Frontend README](./frontend/README.md)
-- [Game Design Document](./GAME.md)
+## Documentation
 
-## TODO
+- [Deployment Guide](./DEPLOYMENT.md) - Detailed deployment instructions
+- [Game Design Document](./GAME.md) - Game mechanics and design
+- [Implementation Details](./IMPLEMENTATION.md) - Technical implementation
+- [Vertex AI Setup](./VERTEX_AI_SETUP.md) - Gemini AI integration
+- [Audio Implementation](./AUDIO_IMPLEMENTATION.md) - Voice and audio system
 
-- [ ] Implement real Gemini API integration
-- [ ] Implement real Firestore integration
-- [ ] Add ElevenLabs voice generation
-- [ ] Add document rendering with visuals
-- [ ] Add animations and polish
-- [ ] Deploy to Google Cloud
+## Features
+
+✅ **Implemented:**
+- AI-generated cases with Gemini (Vertex AI)
+- Voice-acted NPCs with ElevenLabs (12 different voices)
+- Emotional voice delivery based on outcomes
+- Dynamic NPC reactions (thank you messages / angry insults)
+- Real-time dialogue with streaming responses
+- Document inspection gameplay
+- Scoring and accuracy tracking
+- 15 cases per game session
+
+🔄 **In Progress:**
+- Firestore integration for persistent sessions
+- Advanced document visuals
+- Additional game mechanics
+
+## Performance
+
+- **Cost per game:** ~$0.06-0.12 (Gemini + ElevenLabs)
+- **Session generation:** ~30-45 seconds for 15 cases
+- **Response time:** <2s for dialogue, instant for case loading
 
 ## License
 
