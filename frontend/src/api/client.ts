@@ -4,7 +4,7 @@ import { GameService } from "../gen/game/v1/game_connect";
 
 // Create transport
 const transport = createConnectTransport({
-  baseUrl: import.meta.env.VITE_API_URL || "http://localhost:8080",
+  baseUrl: import.meta.env.VITE_API_URL?.trim() || window.location.origin,
 });
 
 // Create typed client
