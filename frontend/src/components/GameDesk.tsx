@@ -10,7 +10,12 @@ interface GameDeskProps {
   gameDate: string;
   rules: string[];
   totalCases: number;
-  onComplete: () => void;
+  onComplete: (stats: {
+    totalScore: number;
+    correct: number;
+    incorrect: number;
+    accuracy: number;
+  }) => void;
 }
 
 interface CaseData {
@@ -70,7 +75,29 @@ function GameDesk({ sessionId, gameDate, rules, totalCases, onComplete }: GameDe
       audioManager.playNewCaseSound();
     } catch (error: any) {
       if (error.message?.includes('no more cases')) {
-        onComplete();
+        // Fetch final session stats
+        try {
+          const statusResponse: any = await gameClient.getSessionStatus({ sessionId });
+          const accuracy = statusResponse.casesCompleted > 0
+            ? Math.round((statusResponse.correctDecisions / statusResponse.casesCompleted) * 100)
+            : 0;
+
+          onComplete({
+            totalScore: statusResponse.totalScore,
+            correct: statusResponse.correctDecisions,
+            incorrect: statusResponse.incorrectDecisions,
+            accuracy,
+          });
+        } catch (statsError) {
+          console.error('Failed to fetch session stats:', statsError);
+          // Fallback with current score
+          onComplete({
+            totalScore: score,
+            correct: 0,
+            incorrect: 0,
+            accuracy: 0,
+          });
+        }
       } else {
         console.error('Failed to load case:', error);
       }
@@ -135,9 +162,38 @@ function GameDesk({ sessionId, gameDate, rules, totalCases, onComplete }: GameDe
     }
   };
 
-  const handleNextCase = () => {
+  const handleNextCase = async () => {
     audioManager.playButtonClick();
-    loadNextCase();
+
+    // Check if this was the last case
+    if (currentCase && currentCase.caseNumber >= totalCases) {
+      // Fetch final session stats and complete the game
+      try {
+        const statusResponse: any = await gameClient.getSessionStatus({ sessionId });
+        const accuracy = statusResponse.casesCompleted > 0
+          ? Math.round((statusResponse.correctDecisions / statusResponse.casesCompleted) * 100)
+          : 0;
+
+        onComplete({
+          totalScore: statusResponse.totalScore,
+          correct: statusResponse.correctDecisions,
+          incorrect: statusResponse.incorrectDecisions,
+          accuracy,
+        });
+      } catch (statsError) {
+        console.error('Failed to fetch session stats:', statsError);
+        // Fallback with current score
+        onComplete({
+          totalScore: score,
+          correct: 0,
+          incorrect: 0,
+          accuracy: 0,
+        });
+      }
+    } else {
+      // Load next case
+      loadNextCase();
+    }
   };
 
   if (loading && !currentCase) {

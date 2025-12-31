@@ -14,9 +14,17 @@ interface SessionData {
   totalCases: number;
 }
 
+interface CompletionStats {
+  totalScore: number;
+  correct: number;
+  incorrect: number;
+  accuracy: number;
+}
+
 function App() {
   const [gameState, setGameState] = useState<GameState>('start');
   const [sessionData, setSessionData] = useState<SessionData | null>(null);
+  const [completionStats, setCompletionStats] = useState<CompletionStats | null>(null);
   const [audioInitialized, setAudioInitialized] = useState(false);
 
   useEffect(() => {
@@ -51,7 +59,8 @@ function App() {
     setGameState('playing');
   };
 
-  const handleSessionComplete = () => {
+  const handleSessionComplete = (stats: CompletionStats) => {
+    setCompletionStats(stats);
     setGameState('complete');
   };
 
@@ -79,14 +88,39 @@ function App() {
           />
         )}
 
-        {gameState === 'complete' && (
+        {gameState === 'complete' && completionStats && (
           <div className="session-complete">
-            <h2>Shift Complete</h2>
-            <p>All cases processed. Good work, clerk.</p>
+            <h2>🎯 Shift Complete</h2>
+            <div className="final-stats">
+              <div className="stat-row">
+                <span className="stat-label">Final Score:</span>
+                <span className="stat-value">{completionStats.totalScore}</span>
+              </div>
+              <div className="stat-row">
+                <span className="stat-label">Accuracy:</span>
+                <span className="stat-value">{completionStats.accuracy}%</span>
+              </div>
+              <div className="stat-row">
+                <span className="stat-label">Correct Decisions:</span>
+                <span className="stat-value">{completionStats.correct}</span>
+              </div>
+              <div className="stat-row">
+                <span className="stat-label">Incorrect Decisions:</span>
+                <span className="stat-value">{completionStats.incorrect}</span>
+              </div>
+            </div>
+            <p className="completion-message">
+              {completionStats.accuracy >= 80
+                ? "Excellent work, clerk! The station runs smoothly with you on duty."
+                : completionStats.accuracy >= 60
+                  ? "Decent work. You'll get better with practice."
+                  : "That was rough. Maybe review the rules next time?"}
+            </p>
             <button
               onClick={() => {
                 audioManager.playButtonClick();
                 setGameState('start');
+                setCompletionStats(null);
               }}
             >
               New Shift

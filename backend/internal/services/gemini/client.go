@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"os"
 	"strings"
 	"time"
@@ -433,12 +434,48 @@ Your explanation:`,
 // Mock data functions (fallbacks)
 
 func (c *Client) mockRules() []string {
-	return []string{
+	// Define pools of possible rules
+	shiftRules := []string{
 		"Only COMPLETE shifts can board",
+		"INCOMPLETE shifts stay on station",
+		"OVERTIME workers need manager approval",
+		"All shifts must be COMPLETE to depart",
+	}
+
+	cargoRules := []string{
 		"No company equipment leaves the station",
 		"Personal items only - no ore samples",
-		"Expired badges get denied",
+		"No company tools allowed on shuttle",
+		"Contraband items = instant denial",
+		"Only personal belongings permitted",
 	}
+
+	badgeRules := []string{
+		"Expired badges get denied",
+		"Badge must be valid on departure date",
+		"No exceptions for expired credentials",
+		"Current badges only - check dates",
+	}
+
+	// Randomly select rules from each category
+	rules := []string{}
+
+	// Pick 1-2 shift rules
+	rules = append(rules, shiftRules[rand.Intn(len(shiftRules))])
+	if rand.Float32() < 0.5 {
+		secondShift := shiftRules[rand.Intn(len(shiftRules))]
+		if secondShift != rules[0] {
+			rules = append(rules, secondShift)
+		}
+	}
+
+	// Pick 1 cargo rule
+	rules = append(rules, cargoRules[rand.Intn(len(cargoRules))])
+
+	// Pick 1 badge rule
+	rules = append(rules, badgeRules[rand.Intn(len(badgeRules))])
+
+	return rules
 }
 
 func (c *Client) mockCases(count int, gameDate string) []models.Case {
