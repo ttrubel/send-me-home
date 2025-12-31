@@ -14,6 +14,7 @@ import (
 	"github.com/ttrubel/send-me-home/gen/game/v1/gamev1connect"
 	"github.com/ttrubel/send-me-home/internal/api"
 	"github.com/ttrubel/send-me-home/internal/config"
+	"github.com/ttrubel/send-me-home/internal/services/elevenlabs"
 	"github.com/ttrubel/send-me-home/internal/services/firestore"
 	"github.com/ttrubel/send-me-home/internal/services/gemini"
 )
@@ -34,8 +35,11 @@ func main() {
 		log.Fatalf("Failed to initialize Firestore: %v", err)
 	}
 
+	// Initialize ElevenLabs client
+	elevenlabsClient := elevenlabs.NewClient(cfg.ElevenLabsAPIKey)
+
 	// Initialize handler
-	gameHandler := api.NewGameHandler(geminiClient, firestoreClient)
+	gameHandler := api.NewGameHandler(geminiClient, firestoreClient, elevenlabsClient)
 
 	// Create Connect-RPC service
 	mux := http.NewServeMux()

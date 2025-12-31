@@ -73,6 +73,14 @@ function GameDesk({ sessionId, gameDate, rules, totalCases, onComplete }: GameDe
       });
 
       audioManager.playNewCaseSound();
+
+      // Play opening audio if available
+      if (response.openingAudio && response.openingAudio.length > 0) {
+        const audioBlob = new Blob([response.openingAudio], { type: 'audio/mpeg' });
+        const audioUrl = URL.createObjectURL(audioBlob);
+        const audio = new Audio(audioUrl);
+        audio.play().catch((err) => console.error('Failed to play opening audio:', err));
+      }
     } catch (error: any) {
       if (error.message?.includes('no more cases')) {
         // Fetch final session stats
@@ -127,6 +135,12 @@ function GameDesk({ sessionId, gameDate, rules, totalCases, onComplete }: GameDe
       for await (const response of stream) {
         if (response.chunk.case === 'textChunk') {
           setNpcResponse(response.chunk.value);
+        } else if (response.chunk.case === 'audioChunk') {
+          // Play audio chunk
+          const audioBlob = new Blob([response.chunk.value], { type: 'audio/mpeg' });
+          const audioUrl = URL.createObjectURL(audioBlob);
+          const audio = new Audio(audioUrl);
+          audio.play().catch((err) => console.error('Failed to play response audio:', err));
         }
       }
     } catch (error) {

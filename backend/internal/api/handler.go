@@ -11,19 +11,22 @@ import (
 
 	gamev1 "github.com/ttrubel/send-me-home/gen/game/v1"
 	"github.com/ttrubel/send-me-home/internal/models"
+	"github.com/ttrubel/send-me-home/internal/services/elevenlabs"
 	"github.com/ttrubel/send-me-home/internal/services/firestore"
 	"github.com/ttrubel/send-me-home/internal/services/gemini"
 )
 
 type GameHandler struct {
-	gemini    *gemini.Client
-	firestore *firestore.Client
+	gemini     *gemini.Client
+	firestore  *firestore.Client
+	elevenlabs *elevenlabs.Client
 }
 
-func NewGameHandler(geminiClient *gemini.Client, firestoreClient *firestore.Client) *GameHandler {
+func NewGameHandler(geminiClient *gemini.Client, firestoreClient *firestore.Client, elevenlabsClient *elevenlabs.Client) *GameHandler {
 	return &GameHandler{
-		gemini:    geminiClient,
-		firestore: firestoreClient,
+		gemini:     geminiClient,
+		firestore:  firestoreClient,
+		elevenlabs: elevenlabsClient,
 	}
 }
 
@@ -75,8 +78,27 @@ func (h *GameHandler) StartSession(
 		return connect.NewError(connect.CodeInternal, fmt.Errorf("failed to generate cases: %w", err))
 	}
 
-	// TODO: Generate opening audio for each case with ElevenLabs
-	// For now, we skip audio generation
+	// Step 2.5: Generate opening audio for each case with ElevenLabs
+	for i := range cases {
+		stream.Send(&gamev1.StartSessionResponse{
+			Update: &gamev1.StartSessionResponse_Progress{
+				Progress: &gamev1.SessionProgress{
+					Current: int32(i),
+					Total:   int32(numCases),
+					Message: fmt.Sprintf("Generating voice audio %d/%d...", i+1, numCases),
+				},
+			},
+		})
+
+		// Generate audio for opening line
+		audioData, err := h.elevenlabs.TextToSpeech(ctx, cases[i].NPC.VoiceID, cases[i].OpeningLine)
+		if err != nil {
+			log.Printf("Warning: Failed to generate audio for case %d: %v", i, err)
+			// Continue without audio - it's optional
+		} else if audioData != nil {
+			cases[i].OpeningAudio = audioData
+		}
+	}
 
 	// Step 3: Create session
 	sessionID := uuid.New().String()
@@ -193,8 +215,19 @@ func (h *GameHandler) AskQuestion(
 		},
 	})
 
-	// TODO: Generate and stream audio with ElevenLabs
-	// For now, we skip audio generation
+	// Generate and stream audio with ElevenLabs
+	audioData, err := h.elevenlabs.TextToSpeech(ctx, caseData.NPC.VoiceID, responseText)
+	if err != nil {
+		log.Printf("Warning: Failed to generate audio for response: %v", err)
+		// Continue without audio - it's optional
+	} else if audioData != nil {
+		// Send audio chunk
+		stream.Send(&gamev1.AskQuestionResponse{
+			Chunk: &gamev1.AskQuestionResponse_AudioChunk{
+				AudioChunk: audioData,
+			},
+		})
+	}
 
 	// Send done signal
 	stream.Send(&gamev1.AskQuestionResponse{
