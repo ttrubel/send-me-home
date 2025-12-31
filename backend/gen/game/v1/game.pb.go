@@ -873,6 +873,8 @@ type ResolveCaseResponse struct {
 	ScoreDelta          int32                  `protobuf:"varint,4,opt,name=score_delta,json=scoreDelta,proto3" json:"score_delta,omitempty"`                           // Points earned/lost
 	TotalScore          int32                  `protobuf:"varint,5,opt,name=total_score,json=totalScore,proto3" json:"total_score,omitempty"`
 	Outcome             CaseOutcome            `protobuf:"varint,6,opt,name=outcome,proto3,enum=game.v1.CaseOutcome" json:"outcome,omitempty"`
+	NpcReactionText     string                 `protobuf:"bytes,7,opt,name=npc_reaction_text,json=npcReactionText,proto3" json:"npc_reaction_text,omitempty"`    // Thank you message or insult
+	NpcReactionAudio    []byte                 `protobuf:"bytes,8,opt,name=npc_reaction_audio,json=npcReactionAudio,proto3" json:"npc_reaction_audio,omitempty"` // Pre-generated audio response
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -947,6 +949,20 @@ func (x *ResolveCaseResponse) GetOutcome() CaseOutcome {
 		return x.Outcome
 	}
 	return CaseOutcome_CASE_OUTCOME_UNSPECIFIED
+}
+
+func (x *ResolveCaseResponse) GetNpcReactionText() string {
+	if x != nil {
+		return x.NpcReactionText
+	}
+	return ""
+}
+
+func (x *ResolveCaseResponse) GetNpcReactionAudio() []byte {
+	if x != nil {
+		return x.NpcReactionAudio
+	}
+	return nil
 }
 
 type GetSessionStatusRequest struct {
@@ -1290,7 +1306,7 @@ const file_game_v1_game_proto_rawDesc = "" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x17\n" +
 	"\acase_id\x18\x02 \x01(\tR\x06caseId\x12-\n" +
-	"\bdecision\x18\x03 \x01(\x0e2\x11.game.v1.DecisionR\bdecision\"\xee\x01\n" +
+	"\bdecision\x18\x03 \x01(\x0e2\x11.game.v1.DecisionR\bdecision\"\xc8\x02\n" +
 	"\x13ResolveCaseResponse\x12\x18\n" +
 	"\acorrect\x18\x01 \x01(\bR\acorrect\x12\x18\n" +
 	"\averdict\x18\x02 \x01(\tR\averdict\x121\n" +
@@ -1299,7 +1315,9 @@ const file_game_v1_game_proto_rawDesc = "" +
 	"scoreDelta\x12\x1f\n" +
 	"\vtotal_score\x18\x05 \x01(\x05R\n" +
 	"totalScore\x12.\n" +
-	"\aoutcome\x18\x06 \x01(\x0e2\x14.game.v1.CaseOutcomeR\aoutcome\"8\n" +
+	"\aoutcome\x18\x06 \x01(\x0e2\x14.game.v1.CaseOutcomeR\aoutcome\x12*\n" +
+	"\x11npc_reaction_text\x18\a \x01(\tR\x0fnpcReactionText\x12,\n" +
+	"\x12npc_reaction_audio\x18\b \x01(\fR\x10npcReactionAudio\"8\n" +
 	"\x17GetSessionStatusRequest\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\"\xcc\x02\n" +

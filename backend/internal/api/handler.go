@@ -79,13 +79,14 @@ func (h *GameHandler) StartSession(
 	}
 
 	// Step 2.5: Generate opening audio for each case with ElevenLabs
+	totalCases := len(cases)
 	for i := range cases {
 		stream.Send(&gamev1.StartSessionResponse{
 			Update: &gamev1.StartSessionResponse_Progress{
 				Progress: &gamev1.SessionProgress{
 					Current: int32(i),
-					Total:   int32(numCases),
-					Message: fmt.Sprintf("Generating voice audio %d/%d...", i+1, numCases),
+					Total:   int32(totalCases),
+					Message: fmt.Sprintf("Generating voice audio %d/%d...", i+1, totalCases),
 				},
 			},
 		})
@@ -327,6 +328,37 @@ func (h *GameHandler) ResolveCase(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
+	// Generate NPC reaction (thank you or insult)
+	npcReaction, err := h.gemini.GenerateNPCReaction(ctx, *caseData, playerDecision, correct)
+	if err != nil {
+		log.Printf("Warning: Failed to generate NPC reaction: %v", err)
+		npcReaction = "..." // Fallback
+	}
+
+	// Determine emotion for voice delivery
+	var emotion elevenlabs.EmotionType
+	approved := (playerDecision == "approve")
+
+	if approved && correct {
+		emotion = elevenlabs.EmotionHappy // Gratitude
+	} else if approved && !correct {
+		emotion = elevenlabs.EmotionNervous // Got away with it
+	} else if !approved && correct {
+		emotion = elevenlabs.EmotionAngry // Fair denial - frustrated
+	} else {
+		emotion = elevenlabs.EmotionFurious // Unfair denial - RAGE
+	}
+
+	// Generate audio for NPC reaction with emotion
+	var reactionAudio []byte
+	audioData, err := h.elevenlabs.TextToSpeechWithEmotion(ctx, caseData.NPC.VoiceID, npcReaction, emotion)
+	if err != nil {
+		log.Printf("Warning: Failed to generate reaction audio: %v", err)
+		// Continue without audio - it's optional
+	} else if audioData != nil {
+		reactionAudio = audioData
+	}
+
 	// Determine outcome
 	outcome := gamev1.CaseOutcome_CASE_OUTCOME_UNSPECIFIED
 	if correct && playerDecision == "approve" {
@@ -349,6 +381,8 @@ func (h *GameHandler) ResolveCase(
 		ScoreDelta:          int32(scoreDelta),
 		TotalScore:          int32(session.Score),
 		Outcome:             outcome,
+		NpcReactionText:     npcReaction,
+		NpcReactionAudio:    reactionAudio,
 	}
 
 	return connect.NewResponse(response), nil

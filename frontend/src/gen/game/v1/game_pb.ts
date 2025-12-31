@@ -704,6 +704,20 @@ export class ResolveCaseResponse extends Message<ResolveCaseResponse> {
    */
   outcome = CaseOutcome.UNSPECIFIED;
 
+  /**
+   * Thank you message or insult
+   *
+   * @generated from field: string npc_reaction_text = 7;
+   */
+  npcReactionText = "";
+
+  /**
+   * Pre-generated audio response
+   *
+   * @generated from field: bytes npc_reaction_audio = 8;
+   */
+  npcReactionAudio = new Uint8Array(0);
+
   constructor(data?: PartialMessage<ResolveCaseResponse>) {
     super();
     proto3.util.initPartial(data, this);
@@ -718,6 +732,8 @@ export class ResolveCaseResponse extends Message<ResolveCaseResponse> {
     { no: 4, name: "score_delta", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 5, name: "total_score", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 6, name: "outcome", kind: "enum", T: proto3.getEnumType(CaseOutcome) },
+    { no: 7, name: "npc_reaction_text", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 8, name: "npc_reaction_audio", kind: "scalar", T: 12 /* ScalarType.BYTES */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ResolveCaseResponse {

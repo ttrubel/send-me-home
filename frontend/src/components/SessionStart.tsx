@@ -21,7 +21,7 @@ function SessionStart({ onSessionReady }: SessionStartProps) {
     setProgress({ current: 0, total: 0, message: 'Initializing...' });
 
     try {
-      const stream: any = gameClient.startSession({ numCases: 2 });
+      const stream: any = gameClient.startSession({ numCases: 15 });
 
       // Stream session start progress
       for await (const response of stream) {

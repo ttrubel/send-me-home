@@ -124,6 +124,8 @@ message ResolveCaseResponse {
   int32 score_delta = 4; // Points earned/lost
   int32 total_score = 5;
   CaseOutcome outcome = 6;
+  string npc_reaction_text = 7; // Thank you message or insult
+  bytes npc_reaction_audio = 8; // Pre-generated audio response
 }
 
 enum CaseOutcome {

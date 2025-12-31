@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/ttrubel/send-me-home/internal/models"
+	"github.com/ttrubel/send-me-home/internal/services/elevenlabs"
 	"google.golang.org/genai"
 )
 
@@ -47,10 +48,16 @@ func (c *Client) initClient(ctx context.Context) error {
 	// If neither is set, use mock mode
 	client, err := genai.NewClient(ctx, &genai.ClientConfig{})
 	if err != nil {
-		// If client creation fails, use mock mode
+		// Log the error but continue in mock mode
+		fmt.Printf("WARNING: Failed to initialize Gemini client (using mock mode): %v\n", err)
+		fmt.Printf("  GOOGLE_GENAI_USE_VERTEXAI: %s\n", os.Getenv("GOOGLE_GENAI_USE_VERTEXAI"))
+		fmt.Printf("  GOOGLE_CLOUD_PROJECT: %s\n", os.Getenv("GOOGLE_CLOUD_PROJECT"))
+		fmt.Printf("  GOOGLE_CLOUD_LOCATION: %s\n", os.Getenv("GOOGLE_CLOUD_LOCATION"))
+		fmt.Printf("  GOOGLE_APPLICATION_CREDENTIALS: %s\n", os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"))
 		return nil
 	}
 
+	fmt.Printf("SUCCESS: Gemini client initialized successfully with model: %s\n", c.model)
 	c.client = client
 	return nil
 }
@@ -290,8 +297,12 @@ Return ONLY valid JSON with this exact structure:
 		// Fix badge picture URL to use caseID as seed
 		badgeFields := geminiCase.Documents.EmployeeBadge
 		if picture, ok := badgeFields["picture"]; ok && picture == "USE_CASE_ID_AS_SEED" {
-			badgeFields["picture"] = fmt.Sprintf("https://api.dicebear.com/7.x/bottts/svg?seed=%s&backgroundColor=1a3a52&scale=90", caseID)
+			// Use notionists-neutral style for realistic human avatars
+			badgeFields["picture"] = fmt.Sprintf("https://api.dicebear.com/9.x/notionists-neutral/svg?seed=%s&backgroundColor=1a3a52", caseID)
 		}
+
+		// Select appropriate voice based on character name and role
+		voiceID := elevenlabs.SelectVoiceForCharacter(geminiCase.NPC.Name, geminiCase.NPC.Role)
 
 		cases[i] = models.Case{
 			CaseID: caseID,
@@ -300,7 +311,7 @@ Return ONLY valid JSON with this exact structure:
 				Role:        geminiCase.NPC.Role,
 				Department:  geminiCase.NPC.Department,
 				Personality: geminiCase.NPC.Personality,
-				VoiceID:     "21m00Tcm4TlvDq8ikWAM",
+				VoiceID:     voiceID,
 				Demeanor:    geminiCase.NPC.Demeanor,
 			},
 			Documents: []models.Document{
@@ -454,6 +465,76 @@ Your verdict:`,
 	return strings.TrimSpace(text), nil
 }
 
+// GenerateNPCReaction generates worker's emotional response to approval/denial
+func (c *Client) GenerateNPCReaction(ctx context.Context, caseData models.Case, playerDecision string, wasCorrect bool) (string, error) {
+	if err := c.initClient(ctx); err != nil {
+		return "", err
+	}
+
+	// Determine if worker is being approved or denied
+	approved := (playerDecision == "approve")
+
+	// Fallback to mock if no client
+	if c.client == nil {
+		return c.mockReaction(approved, wasCorrect, caseData.NPC.Name), nil
+	}
+
+	// Build context about whether this was a fair decision
+	var emotionalContext string
+	if approved && wasCorrect {
+		emotionalContext = "You are being APPROVED and you deserve it (your documents are in order)."
+	} else if approved && !wasCorrect {
+		emotionalContext = "You are being APPROVED but you shouldn't be (you have violations, but the clerk missed them)."
+	} else if !approved && wasCorrect {
+		emotionalContext = "You are being DENIED and it's justified (you have violations)."
+	} else {
+		emotionalContext = "You are being DENIED unfairly (your documents are perfect, but the clerk made a mistake). You should be VERY ANGRY."
+	}
+
+	prompt := fmt.Sprintf(`You are an NPC worker at an asteroid mining station who just received a decision from the transit clerk.
+
+YOUR CHARACTER:
+- Name: %s
+- Role: %s
+- Personality: %s
+- Demeanor: %s
+
+SITUATION:
+%s
+
+Generate a SHORT (5-15 words max) emotional reaction.
+
+If APPROVED (fairly): Express relief, gratitude, thanks (e.g., "Thank you!", "Finally going home!", "Appreciate it, thanks!")
+If APPROVED (unfairly - you have violations): Act relieved but maybe slightly nervous/hurried (e.g., "Thanks! Gotta run!", "Oh, great! See ya!")
+If DENIED (fairly - you have violations): Express STRONG frustration and anger, but vary the intensity. Use profanity sparingly (e.g., "God DAMN it!", "Are you serious?!", "This is bullshit!", "You've got to be kidding me!", "Oh come ON!", "This is ridiculous!")
+If DENIED (unfairly - you're innocent): Express EXTREME RAGE with insults and occasional profanity. Attack the clerk's competence (e.g., "Are you KIDDING me?!", "What is WRONG with you?!", "Are you BLIND?!", "You incompetent fool!", "Learn to read!", "This is absolute garbage!", "You've got to be fucking joking!", "How did you even get this job?!")
+
+IMPORTANT: Workers are exhausted miners who get emotional. Use profanity occasionally (1 in 3 reactions), not in every line. Vary between clean anger and spicy outbursts.
+
+Your reaction:`,
+		caseData.NPC.Name,
+		caseData.NPC.Role,
+		caseData.NPC.Personality,
+		caseData.NPC.Demeanor,
+		emotionalContext)
+
+	genConfig := &genai.GenerateContentConfig{
+		Temperature: ptr(float32(1.3)),
+	}
+
+	resp, err := c.client.Models.GenerateContent(ctx, c.model, genai.Text(prompt), genConfig)
+	if err != nil {
+		return c.mockReaction(approved, wasCorrect, caseData.NPC.Name), nil
+	}
+
+	text := resp.Text()
+	if text == "" {
+		return c.mockReaction(approved, wasCorrect, caseData.NPC.Name), nil
+	}
+
+	return strings.TrimSpace(text), nil
+}
+
 // Mock data functions (fallbacks)
 
 func (c *Client) mockRules() []string {
@@ -577,6 +658,9 @@ func (c *Client) generateMockCase(index int, gameDate string) models.Case {
 
 	caseID := fmt.Sprintf("case-%d", index)
 
+	// Select appropriate voice based on character name and role
+	voiceID := elevenlabs.SelectVoiceForCharacter(workerName, jobTitle)
+
 	return models.Case{
 		CaseID: caseID,
 		NPC: models.NPCProfile{
@@ -584,7 +668,7 @@ func (c *Client) generateMockCase(index int, gameDate string) models.Case {
 			Role:        jobTitle,
 			Department:  "Mining Operations",
 			Personality: "tired",
-			VoiceID:     "21m00Tcm4TlvDq8ikWAM",
+			VoiceID:     voiceID,
 			Demeanor:    "cooperative",
 		},
 		Documents: []models.Document{
@@ -592,7 +676,7 @@ func (c *Client) generateMockCase(index int, gameDate string) models.Case {
 				Type: "employee_badge",
 				Fields: map[string]string{
 					"name":         workerName,
-					"picture":      fmt.Sprintf("https://api.dicebear.com/7.x/bottts/svg?seed=%s&backgroundColor=1a3a52&scale=90", caseID),
+					"picture":      fmt.Sprintf("https://api.dicebear.com/9.x/notionists-neutral/svg?seed=%s&backgroundColor=1a3a52", caseID),
 					"job_title":    jobTitle,
 					"issue_date":   badgeIssueDate,
 					"expire_date":  badgeExpireDate,
@@ -626,5 +710,68 @@ func (c *Client) generateMockCase(index int, gameDate string) models.Case {
 			}
 			return "deny"
 		}(),
+	}
+}
+
+func (c *Client) mockReaction(approved bool, wasCorrect bool, npcName string) string {
+	if approved && wasCorrect {
+		// Thank you messages for fair approval
+		reactions := []string{
+			"Thank you!",
+			"Finally going home!",
+			"Appreciate it, thanks!",
+			"Oh thank god, finally.",
+			"Great, thanks!",
+		}
+		return reactions[rand.Intn(len(reactions))]
+	} else if approved && !wasCorrect {
+		// Got away with violations
+		reactions := []string{
+			"Thanks! Gotta run!",
+			"Oh, great! See ya!",
+			"Uh, thanks...",
+			"Cool, cool. Thanks!",
+		}
+		return reactions[rand.Intn(len(reactions))]
+	} else if !approved && wasCorrect {
+		// Fair denial (has violations) - Mix of clean and spicy
+		reactions := []string{
+			"God DAMN it!",
+			"Are you serious?!",
+			"This is bullshit!",
+			"You've got to be kidding me!",
+			"Oh come ON!",
+			"This is ridiculous!",
+			"Damn it all!",
+			"Are you for real?!",
+			"Unbelievable!",
+			"What the hell?!",
+			"This is such crap!",
+			"You've gotta be joking!",
+		}
+		return reactions[rand.Intn(len(reactions))]
+	} else {
+		// Unfair denial (innocent worker) - Strong but varied intensity
+		reactions := []string{
+			"Are you KIDDING me?!",
+			"What is WRONG with you?!",
+			"Are you BLIND?!",
+			"You incompetent fool!",
+			"Learn to read!",
+			"This is absolute garbage!",
+			"You've got to be fucking joking!",
+			"How did you even get this job?!",
+			"Are you SERIOUS right now?!",
+			"What kind of idiot are you?!",
+			"Do you even know how to read?!",
+			"This is completely insane!",
+			"You're absolutely useless!",
+			"Check your damn eyes!",
+			"Are you out of your mind?!",
+			"This is a joke, right?!",
+			"You incompetent clown!",
+			"What the hell is wrong with you?!",
+		}
+		return reactions[rand.Intn(len(reactions))]
 	}
 }

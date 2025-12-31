@@ -169,6 +169,21 @@ function GameDesk({ sessionId, gameDate, rules, totalCases, onComplete }: GameDe
         decision,
       });
 
+      // Play NPC reaction audio if available
+      if (response.npcReactionAudio && response.npcReactionAudio.length > 0) {
+        const audioBlob = new Blob([response.npcReactionAudio], { type: 'audio/mpeg' });
+        const audioUrl = URL.createObjectURL(audioBlob);
+        const audio = new Audio(audioUrl);
+        audio.play().catch((err) => console.error('Failed to play reaction audio:', err));
+      }
+
+      // Display NPC reaction text first, then verdict after a short delay
+      if (response.npcReactionText) {
+        setNpcResponse(response.npcReactionText);
+        // Show verdict after a delay to let player see reaction
+        await new Promise(resolve => setTimeout(resolve, 1500));
+      }
+
       setVerdict(response.verdict);
       setScore(response.totalScore);
       setShowVerdict(true);
@@ -304,7 +319,7 @@ function GameDesk({ sessionId, gameDate, rules, totalCases, onComplete }: GameDe
             {/* Character Portrait */}
             <div className="worker-portrait">
               <img
-                src={`https://api.dicebear.com/7.x/bottts/svg?seed=${currentCase.caseId}&backgroundColor=1a3a52&scale=90`}
+                src={`https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${currentCase.caseId}&backgroundColor=1a3a52`}
                 alt={currentCase.npc.name}
                 className="portrait-image"
               />
