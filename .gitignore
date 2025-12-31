@@ -62,3 +62,7 @@ temp/
 .firebase/
 firebase-debug.log
 firestore-debug.log
+
+.playwright-mcp
+
+__debug*

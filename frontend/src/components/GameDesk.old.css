@@ -1,0 +1,250 @@
+.game-desk {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.desk-header {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
+}
+
+.rules-panel,
+.status-panel {
+  background: #16213e;
+  border: 2px solid #0f3460;
+  padding: 20px;
+}
+
+.rules-panel h3,
+.status-panel h3 {
+  color: #e94560;
+  margin-bottom: 15px;
+}
+
+.rules-panel ul {
+  list-style: none;
+}
+
+.rules-panel li {
+  padding: 8px 0;
+  border-bottom: 1px solid #0f3460;
+}
+
+.rules-panel li:last-child {
+  border-bottom: none;
+}
+
+.status-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.status-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px;
+  background: #0f3460;
+}
+
+.status-item span {
+  color: #888;
+}
+
+.npc-panel {
+  background: #16213e;
+  border: 2px solid #0f3460;
+  padding: 20px;
+}
+
+.npc-info h3 {
+  color: #e94560;
+  font-size: 1.5rem;
+  margin-bottom: 5px;
+}
+
+.npc-role {
+  color: #aaa;
+  margin-bottom: 5px;
+}
+
+.npc-personality {
+  color: #666;
+  font-size: 0.9rem;
+  margin-bottom: 15px;
+}
+
+.npc-dialogue {
+  background: #0f3460;
+  padding: 15px;
+  margin-top: 15px;
+}
+
+.opening-line {
+  color: #ddd;
+  font-style: italic;
+  margin-bottom: 10px;
+}
+
+.npc-response {
+  color: #e94560;
+  font-style: italic;
+  border-left: 3px solid #e94560;
+  padding-left: 10px;
+}
+
+.documents-area h3 {
+  color: #e94560;
+  margin-bottom: 15px;
+}
+
+.documents-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.document {
+  background: #16213e;
+  border: 2px solid #0f3460;
+  padding: 20px;
+}
+
+.document h4 {
+  color: #e94560;
+  margin-bottom: 15px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.document-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.field-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px;
+  background: #0f3460;
+}
+
+.field-label {
+  color: #888;
+  text-transform: capitalize;
+}
+
+.field-value {
+  color: #eee;
+  font-weight: bold;
+}
+
+.qa-section {
+  background: #16213e;
+  border: 2px solid #0f3460;
+  padding: 20px;
+}
+
+.qa-section h3 {
+  color: #e94560;
+  margin-bottom: 15px;
+}
+
+.qa-input {
+  display: flex;
+  gap: 10px;
+}
+
+.qa-input input {
+  flex: 1;
+  padding: 12px;
+  background: #0f3460;
+  border: 2px solid #16213e;
+  color: #eee;
+  font-family: 'Courier New', monospace;
+  font-size: 16px;
+}
+
+.qa-input input:focus {
+  outline: none;
+  border-color: #e94560;
+}
+
+.decision-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+}
+
+.decision-buttons button {
+  padding: 20px;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.btn-approve {
+  background: #1a5f3a;
+  border-color: #2d8f5a;
+}
+
+.btn-approve:hover:not(:disabled) {
+  background: #2d8f5a;
+}
+
+.btn-deny {
+  background: #5f1a1a;
+  border-color: #8f2d2d;
+}
+
+.btn-deny:hover:not(:disabled) {
+  background: #8f2d2d;
+}
+
+.btn-secondary {
+  background: #3d3d1a;
+  border-color: #8f8f2d;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #8f8f2d;
+}
+
+.verdict-panel {
+  background: #16213e;
+  border: 3px solid #e94560;
+  padding: 30px;
+  text-align: center;
+}
+
+.verdict-panel h3 {
+  color: #e94560;
+  font-size: 1.8rem;
+  margin-bottom: 20px;
+}
+
+.verdict-panel p {
+  font-size: 1.1rem;
+  line-height: 1.8;
+  margin-bottom: 30px;
+}
+
+.btn-next {
+  padding: 15px 40px;
+  font-size: 18px;
+  background: #0f3460;
+  border-color: #e94560;
+}
+
+.btn-next:hover {
+  background: #e94560;
+}
+
+.loading {
+  text-align: center;
+  padding: 40px;
+  font-size: 1.2rem;
+  color: #e94560;
+}

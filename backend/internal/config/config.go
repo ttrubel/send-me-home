@@ -1,21 +1,27 @@
 package config
 
 import (
+	"log"
 	"os"
+
+	"github.com/joho/godotenv"
 )
 
 type Config struct {
-	Port            string
-	GeminiAPIKey    string
-	ElevenLabsAPIKey string
+	Port               string
+	ElevenLabsAPIKey   string
 	FirestoreProjectID string
 }
 
 func Load() *Config {
+	// Load .env file if it exists (ignore error if not found)
+	if err := godotenv.Load(); err != nil {
+		log.Printf("No .env file found, using environment variables")
+	}
+
 	return &Config{
-		Port:            getEnv("PORT", "8080"),
-		GeminiAPIKey:    getEnv("GEMINI_API_KEY", ""),
-		ElevenLabsAPIKey: getEnv("ELEVENLABS_API_KEY", ""),
+		Port:               getEnv("PORT", "8080"),
+		ElevenLabsAPIKey:   getEnv("ELEVENLABS_API_KEY", ""),
 		FirestoreProjectID: getEnv("FIRESTORE_PROJECT_ID", ""),
 	}
 }

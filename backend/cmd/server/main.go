@@ -23,7 +23,11 @@ func main() {
 	cfg := config.Load()
 
 	// Initialize services
-	geminiClient := gemini.NewClient(cfg.GeminiAPIKey)
+	// Gemini client reads config from environment variables:
+	// - GOOGLE_GENAI_USE_VERTEXAI=true for Vertex AI
+	// - GOOGLE_CLOUD_PROJECT and GOOGLE_CLOUD_LOCATION for Vertex AI
+	// - GOOGLE_API_KEY for AI Studio
+	geminiClient := gemini.NewClient()
 
 	firestoreClient, err := firestore.NewClient(cfg.FirestoreProjectID)
 	if err != nil {
