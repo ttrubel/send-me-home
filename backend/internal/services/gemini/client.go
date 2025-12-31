@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/ttrubel/send-me-home/internal/models"
 	"google.golang.org/genai"
@@ -54,7 +55,7 @@ func (c *Client) initClient(ctx context.Context) error {
 }
 
 // GenerateRules generates daily rules for the shift
-func (c *Client) GenerateRules(ctx context.Context) ([]string, error) {
+func (c *Client) GenerateRules(ctx context.Context, gameDate string) ([]string, error) {
 	if err := c.initClient(ctx); err != nil {
 		return nil, err
 	}
@@ -64,18 +65,41 @@ func (c *Client) GenerateRules(ctx context.Context) ([]string, error) {
 		return c.mockRules(), nil
 	}
 
-	prompt := `You are generating rules for a Papers, Please-style game set on an asteroid mining station.
+	prompt := fmt.Sprintf(`You are generating rules for a Papers, Please-style game set on an asteroid mining station.
 
-Generate 3-5 daily transit rules that workers must comply with to board the final departure shuttle.
+TODAY'S GAME DATE: %s
+
+Generate 3-4 daily transit rules that workers must comply with to board the final departure shuttle.
+
+Workers have TWO documents:
+1. EMPLOYEE BADGE: name, picture URL, job title, issue date, expire date, company name
+2. CLEARANCE FORM: name, shift_status (one of: "COMPLETE", "INCOMPLETE", "OVERTIME"), cargo items (cargo1, cargo2)
+
+SHIFT STATUS (be clear):
+- "COMPLETE" = Worker finished their shift, can go home
+- "INCOMPLETE" = Worker didn't finish shift, should be denied
+- "OVERTIME" = Worker did extra hours (can still go home if rules allow)
+
+CARGO CATEGORIES (be very specific):
+- ALLOWED: "Personal clothing", "Family photos", "Toiletries", "Snacks", "Music player", "Books", "Personal tablet"
+- COMPANY PROPERTY (forbidden): "Delta-7 drill bit", "Company tablet", "Mining helmet", "Safety equipment", "Company radio", "Work tools"
+- CONTRABAND (forbidden): "Asteroid samples", "Ore samples", "Minerals", "Live specimens", "Alcohol", "Weapons"
 
 Rules should:
-- Be specific and verifiable from documents (contract, shift log, clearance badge)
-- Create interesting edge cases and contradictions
-- Sound like bureaucratic regulations
-- Relate to: contract completion, incidents, medical clearance, fees, zone access
+- Be SHORT (one sentence max, under 60 characters ideal)
+- Be VERY SPECIFIC about what's allowed/forbidden
+- Create clear violations (no ambiguity)
+- Relate to: badge expiration (check against today's date %s), cargo restrictions, shift completion status
+
+Examples of good rules:
+- "Only COMPLETE shifts can board"
+- "No company tools leave the station"
+- "Expired badges = denied, no exceptions"
+- "Personal items only - no ore samples"
+- "INCOMPLETE shifts stay on station"
 
 Return ONLY a JSON array of strings, no other text:
-["rule 1", "rule 2", "rule 3"]`
+["rule 1", "rule 2", "rule 3", "rule 4"]`, gameDate, gameDate)
 
 	genConfig := &genai.GenerateContentConfig{
 		Temperature: ptr(float32(1.0)),
@@ -108,26 +132,43 @@ Return ONLY a JSON array of strings, no other text:
 }
 
 // GenerateCases generates multiple cases in parallel
-func (c *Client) GenerateCases(ctx context.Context, rules []string, count int) ([]models.Case, error) {
+func (c *Client) GenerateCases(ctx context.Context, rules []string, count int, gameDate string) ([]models.Case, error) {
 	if err := c.initClient(ctx); err != nil {
 		return nil, err
 	}
 
 	// Fallback to mock if no client
 	if c.client == nil {
-		return c.mockCases(count), nil
+		return c.mockCases(count, gameDate), nil
 	}
 
 	rulesText := strings.Join(rules, "\n- ")
 
 	prompt := fmt.Sprintf(`You are generating cases for a Papers, Please-style document inspection game.
 
+TODAY'S GAME DATE: %s
+
 TODAY'S RULES:
 - %s
 
-Generate %d NPC worker cases. Each case should have:
+Generate %d NPC worker cases. Each worker has TWO documents:
+1. EMPLOYEE BADGE: name, picture (use: https://api.dicebear.com/7.x/bottts/svg?seed=unique-seed), job_title, issue_date, expire_date, company_name
+2. CLEARANCE FORM: name, shift_status (one of: "COMPLETE", "INCOMPLETE", "OVERTIME"), cargo1, cargo2
+
+SHIFT STATUS MUST BE CLEAR:
+- "COMPLETE" = Worker finished shift (can board if other rules pass)
+- "INCOMPLETE" = Shift not finished (violation if rules require complete)
+- "OVERTIME" = Extra hours worked (can board if rules allow)
+
+CARGO MUST BE CLEAR AND SPECIFIC:
+- ALLOWED: "Personal clothing", "Family photos", "Toiletries", "Snacks", "Music player", "Books", "Personal tablet", "Personal effects"
+- COMPANY PROPERTY (violation): "Delta-7 drill bit", "Company mining equipment", "Work helmet", "Safety vest", "Company radio", "Excavation tools"
+- CONTRABAND (violation): "Ore samples", "Mineral specimens", "Asteroid fragments", "Unauthorized samples"
+- DO NOT use ambiguous items like "Research equipment" or "Tools" - be SPECIFIC about whether personal or company
+
+Each case should have:
 1. An NPC profile (name, role, department, personality, demeanor)
-2. Three documents: contract, shift_log, clearance_badge
+2. The two documents above
 3. An opening line the NPC says
 4. The ground truth about this worker
 5. Whether they should be approved or denied
@@ -135,6 +176,12 @@ Generate %d NPC worker cases. Each case should have:
 
 About 60%% should be APPROVED (compliant with rules).
 About 40%% should be DENIED (violate at least one rule).
+
+IMPORTANT DATE LOGIC:
+- Today's date is %s
+- Badge issue_date should be BEFORE today (e.g., 6 months ago)
+- Badge expire_date can be AFTER today (valid) or BEFORE today (expired - violation!)
+- Use the game date context to generate realistic dates
 
 Return ONLY valid JSON with this exact structure:
 {
@@ -148,40 +195,32 @@ Return ONLY valid JSON with this exact structure:
         "demeanor": "cooperative"
       },
       "documents": {
-        "contract": {
+        "employee_badge": {
           "name": "John Smith",
-          "employee_id": "EMP-1234",
-          "role": "Mining Engineer",
-          "department": "Excavation",
-          "term_end": "2024-12-25",
-          "signature": "✓ Signed"
+          "picture": "https://api.dicebear.com/7.x/bottts/svg?seed=john-smith-123",
+          "job_title": "Mining Engineer",
+          "issue_date": "YYYY-MM-DD (must be before today)",
+          "expire_date": "YYYY-MM-DD (after today if valid, before if violation)",
+          "company_name": "Delta-7 Mining Corp"
         },
-        "shift_log": {
-          "employee_id": "EMP-1234",
-          "last_shift": "2024-12-24",
-          "total_hours": "2080",
-          "incidents": "None",
-          "debrief_status": "Complete"
-        },
-        "clearance_badge": {
-          "employee_id": "EMP-1234",
-          "access_level": "A",
-          "medical_clearance": "Valid",
-          "zone_auth": "Zone A, B",
-          "expires": "2025-01-15"
+        "clearance_form": {
+          "name": "John Smith",
+          "shift_status": "COMPLETE",
+          "cargo1": "Personal effects",
+          "cargo2": "None"
         }
       },
-      "opening_line": "Hey, I need to catch the shuttle home. My contract's up.",
+      "opening_line": "Hey, I need to catch the shuttle home. My shift's done.",
       "truth": {
         "employee_id": "EMP-1234",
         "should_approve": true,
-        "reason": "Contract term complete, no incidents, valid clearance"
+        "reason": "Shift complete, badge valid, cargo approved"
       },
       "contradictions": [],
       "correct_decision": "approve"
     }
   ]
-}`, rulesText, count)
+}`, gameDate, rulesText, count, gameDate)
 
 	genConfig := &genai.GenerateContentConfig{
 		Temperature: ptr(float32(1.0)),
@@ -189,12 +228,12 @@ Return ONLY valid JSON with this exact structure:
 
 	resp, err := c.client.Models.GenerateContent(ctx, c.model, genai.Text(prompt), genConfig)
 	if err != nil {
-		return c.mockCases(count), nil
+		return c.mockCases(count, gameDate), nil
 	}
 
 	text := resp.Text()
 	if text == "" {
-		return c.mockCases(count), nil
+		return c.mockCases(count, gameDate), nil
 	}
 
 	// Extract JSON from response
@@ -215,9 +254,8 @@ Return ONLY valid JSON with this exact structure:
 				Demeanor    string `json:"demeanor"`
 			} `json:"npc"`
 			Documents struct {
-				Contract       map[string]string `json:"contract"`
-				ShiftLog       map[string]string `json:"shift_log"`
-				ClearanceBadge map[string]string `json:"clearance_badge"`
+				EmployeeBadge  map[string]string `json:"employee_badge"`
+				ClearanceForm  map[string]string `json:"clearance_form"`
 			} `json:"documents"`
 			OpeningLine     string   `json:"opening_line"`
 			Truth           struct {
@@ -231,7 +269,7 @@ Return ONLY valid JSON with this exact structure:
 	}
 
 	if err := json.Unmarshal([]byte(text), &response); err != nil {
-		return c.mockCases(count), nil
+		return c.mockCases(count, gameDate), nil
 	}
 
 	// Convert to models.Case
@@ -248,9 +286,8 @@ Return ONLY valid JSON with this exact structure:
 				Demeanor:    geminiCase.NPC.Demeanor,
 			},
 			Documents: []models.Document{
-				{Type: "contract", Fields: geminiCase.Documents.Contract},
-				{Type: "shift_log", Fields: geminiCase.Documents.ShiftLog},
-				{Type: "clearance_badge", Fields: geminiCase.Documents.ClearanceBadge},
+				{Type: "employee_badge", Fields: geminiCase.Documents.EmployeeBadge},
+				{Type: "clearance_form", Fields: geminiCase.Documents.ClearanceForm},
 			},
 			OpeningLine: geminiCase.OpeningLine,
 			Truth: models.CaseTruth{
@@ -397,30 +434,92 @@ Your explanation:`,
 
 func (c *Client) mockRules() []string {
 	return []string{
-		"Only workers with contract term complete may board",
-		"Any incident flag requires supervisor sign-off",
-		"Medical clearance required after exposure events",
-		"No unpaid equipment fees allowed",
-		"All personnel must have valid Zone A clearance",
+		"Only COMPLETE shifts can board",
+		"No company equipment leaves the station",
+		"Personal items only - no ore samples",
+		"Expired badges get denied",
 	}
 }
 
-func (c *Client) mockCases(count int) []models.Case {
+func (c *Client) mockCases(count int, gameDate string) []models.Case {
 	cases := make([]models.Case, count)
 	for i := 0; i < count; i++ {
-		cases[i] = c.generateMockCase(i + 1)
+		cases[i] = c.generateMockCase(i+1, gameDate)
 	}
 	return cases
 }
 
-func (c *Client) generateMockCase(index int) models.Case {
-	employeeID := fmt.Sprintf("EMP-%04d", index)
+func (c *Client) generateMockCase(index int, gameDate string) models.Case {
+	workerName := fmt.Sprintf("Worker %d", index)
+	jobTitle := "Drill Operator"
+	shiftStatus := "COMPLETE"
+	cargo1 := "Personal clothing"
+	cargo2 := "Family photos"
+	shouldApprove := true
+	reason := "Shift complete, badge valid, cargo approved"
+
+	// Vary some details based on index for variety and create violations
+	switch index % 6 {
+	case 0:
+		jobTitle = "Drill Operator"
+		shiftStatus = "COMPLETE"
+		cargo1 = "Personal clothing"
+		cargo2 = "Snacks"
+		shouldApprove = true
+		reason = "Shift complete, badge valid, cargo approved"
+	case 1:
+		jobTitle = "Ore Processor"
+		shiftStatus = "COMPLETE"
+		cargo1 = "Personal tablet"
+		cargo2 = "Books"
+		shouldApprove = true
+		reason = "Shift complete, badge valid, cargo approved"
+	case 2:
+		jobTitle = "Systems Tech"
+		shiftStatus = "COMPLETE"
+		cargo1 = "Delta-7 drill bit"
+		cargo2 = "Personal effects"
+		shouldApprove = false
+		reason = "Company equipment not allowed off-station"
+	case 3:
+		jobTitle = "Geologist"
+		shiftStatus = "COMPLETE"
+		cargo1 = "Ore samples"
+		cargo2 = "Personal clothing"
+		shouldApprove = false
+		reason = "Ore samples are contraband"
+	case 4:
+		jobTitle = "Safety Officer"
+		shiftStatus = "INCOMPLETE"
+		cargo1 = "Music player"
+		cargo2 = "Toiletries"
+		shouldApprove = false
+		reason = "Shift incomplete - cannot board"
+	case 5:
+		jobTitle = "Maintenance Tech"
+		shiftStatus = "OVERTIME"
+		cargo1 = "Family photos"
+		cargo2 = "Personal clothing"
+		shouldApprove = true
+		reason = "Overtime shift complete, cargo approved"
+	}
+
+	// Parse game date and calculate badge dates
+	parsedDate, err := time.Parse("2006-01-02", gameDate)
+	if err != nil {
+		// Fallback to current date + 100 years if parsing fails
+		parsedDate = time.Now().AddDate(100, 0, 0)
+	}
+
+	// Badge issued 6 months ago, expires in 6 months
+	badgeIssueDate := parsedDate.AddDate(0, -6, 0).Format("2006-01-02")
+	badgeExpireDate := parsedDate.AddDate(0, 6, 0).Format("2006-01-02")
 
 	return models.Case{
 		CaseID: fmt.Sprintf("case-%d", index),
 		NPC: models.NPCProfile{
-			Name:        fmt.Sprintf("Worker %d", index),
-			Role:        "Drill Operator",
+			Name:        workerName,
+			Role:        jobTitle,
 			Department:  "Mining Operations",
 			Personality: "tired",
 			VoiceID:     "21m00Tcm4TlvDq8ikWAM",
@@ -428,48 +527,42 @@ func (c *Client) generateMockCase(index int) models.Case {
 		},
 		Documents: []models.Document{
 			{
-				Type: "contract",
+				Type: "employee_badge",
 				Fields: map[string]string{
-					"name":        fmt.Sprintf("Worker %d", index),
-					"employee_id": employeeID,
-					"role":        "Drill Operator",
-					"department":  "Mining Operations",
-					"term_end":    "2024-12-25",
-					"signature":   "✓ Signed",
+					"name":         workerName,
+					"picture":      fmt.Sprintf("https://api.dicebear.com/7.x/bottts/svg?seed=worker-%d", index),
+					"job_title":    jobTitle,
+					"issue_date":   badgeIssueDate,
+					"expire_date":  badgeExpireDate,
+					"company_name": "Delta-7 Mining Corp",
 				},
 			},
 			{
-				Type: "shift_log",
+				Type: "clearance_form",
 				Fields: map[string]string{
-					"employee_id":    employeeID,
-					"last_shift":     "2024-12-24",
-					"total_hours":    "2,080",
-					"incidents":      "None",
-					"debrief_status": "Complete",
-				},
-			},
-			{
-				Type: "clearance_badge",
-				Fields: map[string]string{
-					"employee_id":       employeeID,
-					"access_level":      "A",
-					"medical_clearance": "Valid",
-					"zone_auth":         "Zone A, B",
-					"expires":           "2025-01-15",
+					"name":         workerName,
+					"shift_status": shiftStatus,
+					"cargo1":       cargo1,
+					"cargo2":       cargo2,
 				},
 			},
 		},
-		OpeningLine: "Hey, I need to catch the shuttle home. My contract's up.",
+		OpeningLine: "Hey, I need to catch the shuttle home. My shift's done.",
 		Truth: models.CaseTruth{
-			EmployeeID:       employeeID,
-			ActualTermEnd:    "2024-12-25",
+			EmployeeID:       fmt.Sprintf("EMP-%04d", index),
+			ActualTermEnd:    parsedDate.Format("2006-01-02"),
 			ActualClearance:  "A",
 			HasIncidents:     false,
 			HasDebriefIssues: false,
-			ShouldApprove:    true,
-			Reason:           "Contract term complete, no incidents, valid clearance",
+			ShouldApprove:    shouldApprove,
+			Reason:           reason,
 		},
 		Contradictions:  []string{},
-		CorrectDecision: "approve",
+		CorrectDecision: func() string {
+			if shouldApprove {
+				return "approve"
+			}
+			return "deny"
+		}(),
 	}
 }

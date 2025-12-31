@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
@@ -37,6 +38,9 @@ func (h *GameHandler) StartSession(
 		numCases = 15
 	}
 
+	// Set game date to current date + 100 years
+	gameDate := time.Now().AddDate(100, 0, 0).Format("2006-01-02")
+
 	// Step 1: Generate rules
 	stream.Send(&gamev1.StartSessionResponse{
 		Update: &gamev1.StartSessionResponse_Progress{
@@ -48,7 +52,7 @@ func (h *GameHandler) StartSession(
 		},
 	})
 
-	rules, err := h.gemini.GenerateRules(ctx)
+	rules, err := h.gemini.GenerateRules(ctx, gameDate)
 	if err != nil {
 		return connect.NewError(connect.CodeInternal, fmt.Errorf("failed to generate rules: %w", err))
 	}
@@ -66,7 +70,7 @@ func (h *GameHandler) StartSession(
 		})
 	}
 
-	cases, err := h.gemini.GenerateCases(ctx, rules, numCases)
+	cases, err := h.gemini.GenerateCases(ctx, rules, numCases, gameDate)
 	if err != nil {
 		return connect.NewError(connect.CodeInternal, fmt.Errorf("failed to generate cases: %w", err))
 	}
@@ -80,6 +84,7 @@ func (h *GameHandler) StartSession(
 
 	session := &models.Session{
 		SessionID:                sessionID,
+		GameDate:                 gameDate,
 		Rules:                    rules,
 		Cases:                    cases,
 		CurrentCaseIndex:         0,
@@ -100,6 +105,7 @@ func (h *GameHandler) StartSession(
 		Update: &gamev1.StartSessionResponse_Ready{
 			Ready: &gamev1.SessionReady{
 				SessionId:            sessionID,
+				GameDate:             gameDate,
 				Rules:                rules,
 				TotalCases:           int32(numCases),
 				SecondaryChecksQuota: int32(secondaryChecksQuota),

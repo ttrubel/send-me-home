@@ -44,6 +44,7 @@ type CaseTruth struct {
 // Session represents a game session
 type Session struct {
 	SessionID              string   `json:"session_id"`
+	GameDate               string   `json:"game_date"` // Current game date (e.g. "2084-12-25")
 	Rules                  []string `json:"rules"`
 	Cases                  []Case   `json:"cases"`
 	CurrentCaseIndex       int      `json:"current_case_index"`

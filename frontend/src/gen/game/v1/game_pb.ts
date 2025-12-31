@@ -232,21 +232,28 @@ export class SessionReady extends Message<SessionReady> {
   sessionId = "";
 
   /**
+   * Current game date (e.g., "2124-12-31")
+   *
+   * @generated from field: string game_date = 2;
+   */
+  gameDate = "";
+
+  /**
    * Daily rules
    *
-   * @generated from field: repeated string rules = 2;
+   * @generated from field: repeated string rules = 3;
    */
   rules: string[] = [];
 
   /**
-   * @generated from field: int32 total_cases = 3;
+   * @generated from field: int32 total_cases = 4;
    */
   totalCases = 0;
 
   /**
    * e.g., 3
    *
-   * @generated from field: int32 secondary_checks_quota = 4;
+   * @generated from field: int32 secondary_checks_quota = 5;
    */
   secondaryChecksQuota = 0;
 
@@ -259,9 +266,10 @@ export class SessionReady extends Message<SessionReady> {
   static readonly typeName = "game.v1.SessionReady";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "session_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "rules", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
-    { no: 3, name: "total_cases", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
-    { no: 4, name: "secondary_checks_quota", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 2, name: "game_date", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "rules", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+    { no: 4, name: "total_cases", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 5, name: "secondary_checks_quota", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SessionReady {

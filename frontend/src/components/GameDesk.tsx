@@ -7,6 +7,7 @@ import './GameDesk.css';
 
 interface GameDeskProps {
   sessionId: string;
+  gameDate: string;
   rules: string[];
   totalCases: number;
   onComplete: () => void;
@@ -21,14 +22,7 @@ interface CaseData {
   remainingSecondaryChecks: number;
 }
 
-interface LogEntry {
-  id: number;
-  time: string;
-  action: string;
-  type: 'approved' | 'denied' | 'info';
-}
-
-function GameDesk({ sessionId, rules, totalCases, onComplete }: GameDeskProps) {
+function GameDesk({ sessionId, gameDate, rules, totalCases, onComplete }: GameDeskProps) {
   const [currentCase, setCurrentCase] = useState<CaseData | null>(null);
   const [score, setScore] = useState(0);
   const [question, setQuestion] = useState('');
@@ -36,13 +30,10 @@ function GameDesk({ sessionId, rules, totalCases, onComplete }: GameDeskProps) {
   const [verdict, setVerdict] = useState('');
   const [showVerdict, setShowVerdict] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [shiftLog, setShiftLog] = useState<LogEntry[]>([]);
-  const logIdCounter = useRef(0);
   const questionInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadNextCase();
-    addLogEntry('Shift started. Transit desk operational.', 'info');
   }, []);
 
   // Space bar handler for quick access to question input
@@ -57,16 +48,6 @@ function GameDesk({ sessionId, rules, totalCases, onComplete }: GameDeskProps) {
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [showVerdict]);
-
-  const addLogEntry = (action: string, type: 'approved' | 'denied' | 'info' = 'info') => {
-    const now = new Date();
-    const time = now.toLocaleTimeString('en-US', { hour12: false });
-    logIdCounter.current += 1;
-    setShiftLog(prev => [
-      { id: logIdCounter.current, time, action, type },
-      ...prev.slice(0, 19) // Keep last 20 entries
-    ]);
-  };
 
   const loadNextCase = async () => {
     setLoading(true);
@@ -87,10 +68,8 @@ function GameDesk({ sessionId, rules, totalCases, onComplete }: GameDeskProps) {
       });
 
       audioManager.playNewCaseSound();
-      addLogEntry(`Case #${response.caseNumber}: ${response.npc!.name} - ${response.npc!.role}`, 'info');
     } catch (error: any) {
       if (error.message?.includes('no more cases')) {
-        addLogEntry('All cases processed. Shift complete.', 'info');
         onComplete();
       } else {
         console.error('Failed to load case:', error);
@@ -104,7 +83,6 @@ function GameDesk({ sessionId, rules, totalCases, onComplete }: GameDeskProps) {
     if (!question.trim() || !currentCase) return;
 
     audioManager.playAskQuestionSound();
-    addLogEntry(`Q: ${question}`, 'info');
 
     setLoading(true);
     setNpcResponse('');
@@ -150,10 +128,6 @@ function GameDesk({ sessionId, rules, totalCases, onComplete }: GameDeskProps) {
       setVerdict(response.verdict);
       setScore(response.totalScore);
       setShowVerdict(true);
-
-      const decisionText = decision === Decision.APPROVE ? 'APPROVED' : 'DENIED';
-      const logType = decision === Decision.APPROVE ? 'approved' : 'denied';
-      addLogEntry(`${currentCase.npc.name}: ${decisionText}`, logType);
     } catch (error) {
       console.error('Failed to resolve case:', error);
     } finally {
@@ -166,10 +140,6 @@ function GameDesk({ sessionId, rules, totalCases, onComplete }: GameDeskProps) {
     loadNextCase();
   };
 
-  // Calculate shuttle capacity (visual indicator)
-  const shuttleCapacity = 12;
-  const occupiedSeats = Math.min(currentCase?.caseNumber || 0, shuttleCapacity);
-
   if (loading && !currentCase) {
     return <div className="loading">▮▮▮ LOADING NEXT CASE ▮▮▮</div>;
   }
@@ -181,56 +151,63 @@ function GameDesk({ sessionId, rules, totalCases, onComplete }: GameDeskProps) {
   return (
     <>
       <div className="game-desk">
-        {/* TOP BAR - Shuttle Status */}
-        <div className="shuttle-status-bar">
-          <div className="shuttle-display">
-            <span className="shuttle-label">◈ SHUTTLE STATUS</span>
-            <div className="shuttle-leds">
-              {Array.from({ length: shuttleCapacity }).map((_, i) => (
-                <div
-                  key={i}
-                  className={`shuttle-led ${i < occupiedSeats ? 'active' : ''}`}
-                  title={`Seat ${i + 1}`}
-                />
-              ))}
-            </div>
+        {/* TOP BAR - Game Stats */}
+        <div className="top-bar">
+          <div className="stat-display">
+            <span className="stat-label">DATE:</span>
+            <span className="stat-value">{gameDate}</span>
           </div>
-          <div className="queue-display">
-            <span>QUEUE:</span>
-            <span className="queue-count">{totalCases - currentCase.caseNumber + 1}</span>
-            <span>REMAINING</span>
+          <div className="stat-display">
+            <span className="stat-label">CASE:</span>
+            <span className="stat-value">{currentCase.caseNumber}/{totalCases}</span>
+          </div>
+          <div className="stat-display">
+            <span className="stat-label">SCORE:</span>
+            <span className="stat-value score">{score}</span>
+          </div>
+          <div className="stat-display">
+            <span className="stat-label">RULES:</span>
+            <span className="stat-value">{rules.length} ACTIVE</span>
           </div>
         </div>
 
-        {/* LEFT PANEL - Clerk's Tools */}
-        <div className="clerk-panel">
-          {/* Clearance Badge */}
-          <div className="clearance-badge">
-            <div className="badge-header">
-              <div className="badge-title">◈ TRANSIT AUTHORITY ◈</div>
-              <div className="badge-station">DELTA-7 STATION</div>
-            </div>
-            <div className="badge-info">
-              <div className="badge-row">
-                <span className="badge-label">CLERK ID:</span>
-                <span className="badge-value">TC-{sessionId.slice(0, 8).toUpperCase()}</span>
+        {/* LEFT PANEL - Documents */}
+        <div className="left-panel">
+          <div className="panel-header">WORKER DOCUMENTS</div>
+          <div className="documents-area">
+            {currentCase.documents.map((doc, i) => (
+              <div key={i} className="document">
+                <div className="document-type">
+                  {doc.type.replace('_', ' ')}
+                </div>
+                {doc.type === 'employee_badge' && doc.fields.picture && (
+                  <div className="badge-picture">
+                    <img
+                      src={doc.fields.picture}
+                      alt="Employee Badge"
+                      className="badge-photo"
+                    />
+                  </div>
+                )}
+                <div className="document-fields">
+                  {Object.entries(doc.fields).map(([key, value]) => {
+                    // Don't render picture field as text for employee badge
+                    if (key === 'picture' && doc.type === 'employee_badge') return null;
+                    return (
+                      <div key={key} className="field-row">
+                        <span className="field-label">{key}</span>
+                        <span className="field-value">{value}</span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-              <div className="badge-row">
-                <span className="badge-label">CLEARANCE:</span>
-                <span className="badge-value">LEVEL 3</span>
-              </div>
-              <div className="badge-row">
-                <span className="badge-label">SHIFT:</span>
-                <span className="badge-value">FINAL DEPARTURE</span>
-              </div>
-            </div>
+            ))}
           </div>
 
-          {/* Rules Book */}
-          <div className="rules-book">
-            <div className="rules-book-header">
-              RULES OF THE DAY
-            </div>
+          {/* Rules Display */}
+          <div className="rules-compact">
+            <div className="rules-header">TODAY'S RULES</div>
             <ul className="rules-list">
               {rules.map((rule, i) => (
                 <li key={i} className="rule-item">{rule}</li>
@@ -239,202 +216,102 @@ function GameDesk({ sessionId, rules, totalCases, onComplete }: GameDeskProps) {
           </div>
         </div>
 
-        {/* CENTER PANEL - NPC Window & Documents */}
+        {/* CENTER PANEL - Worker Face & Chat */}
         <div className="center-panel">
-          {/* NPC Window */}
-          <div className="npc-window">
-            <div className="npc-screen-header">
-              <div className="npc-name">{currentCase.npc.name}</div>
-              <div className="npc-id">ID: {currentCase.caseId.slice(0, 8)}</div>
+          <div className="worker-area">
+            {/* Character Portrait */}
+            <div className="worker-portrait">
+              <img
+                src={`https://api.dicebear.com/7.x/bottts/svg?seed=${currentCase.caseId}&backgroundColor=1a3a52&scale=90`}
+                alt={currentCase.npc.name}
+                className="portrait-image"
+              />
             </div>
 
-            <div className="npc-content">
-              {/* Character Portrait */}
-              <div className="npc-portrait">
-                <img
-                  src={`https://api.dicebear.com/7.x/bottts/svg?seed=${currentCase.caseId}&backgroundColor=1a3a52&scale=90`}
-                  alt={currentCase.npc.name}
-                  className="portrait-image"
-                />
-                <div className="portrait-frame"></div>
-              </div>
+            {/* Worker Name */}
+            <div className="worker-name">{currentCase.npc.name}</div>
+            <div className="worker-role">{currentCase.npc.role}</div>
 
-              <div className="npc-details">
-              <div className="npc-detail-item">
-                <div className="npc-detail-label">Position</div>
-                <div className="npc-detail-value">{currentCase.npc.role}</div>
-              </div>
-              <div className="npc-detail-item">
-                <div className="npc-detail-label">Department</div>
-                <div className="npc-detail-value">{currentCase.npc.department}</div>
-              </div>
-              <div className="npc-detail-item">
-                <div className="npc-detail-label">Personality</div>
-                <div className="npc-detail-value">{currentCase.npc.personality}</div>
-              </div>
-              <div className="npc-detail-item">
-                <div className="npc-detail-label">Demeanor</div>
-                <div className="npc-detail-value">{currentCase.npc.demeanor}</div>
-              </div>
-              </div>
-            </div>
-
-            <div className="npc-dialogue-box">
+            {/* Dialogue Box */}
+            <div className="dialogue-box">
               <div className="dialogue-text">{currentCase.openingLine}</div>
               {npcResponse && (
                 <div className="dialogue-text dialogue-response">{npcResponse}</div>
               )}
             </div>
-          </div>
 
-          {/* Documents Area */}
-          <div className="documents-area">
-            <div className="documents-header">
-              CONTRACT DOCUMENTS
-            </div>
-            <div className="documents-grid">
-              {currentCase.documents.map((doc, i) => (
-                <div key={i} className="document">
-                  <div className="document-type">
-                    {doc.type.replace('_', ' ')}
-                  </div>
-                  <div className="document-fields">
-                    {Object.entries(doc.fields).map(([key, value]) => (
-                      <div key={key} className="field-row">
-                        <span className="field-label">{key}</span>
-                        <span className="field-value">{value}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* RIGHT PANEL - Shift Log & Contract Details */}
-        <div className="right-panel">
-          {/* Contract Details / Stats */}
-          <div className="contract-details">
-            <div className="contract-header">◈ SHIFT STATISTICS ◈</div>
-            <div className="contract-stats">
-              <div className="stat-box">
-                <div className="stat-label">Case</div>
-                <div className="stat-value">{currentCase.caseNumber}/{totalCases}</div>
-              </div>
-              <div className="stat-box">
-                <div className="stat-label">Score</div>
-                <div className="stat-value score">{score}</div>
-              </div>
-              <div className="stat-box">
-                <div className="stat-label">Checks</div>
-                <div className="stat-value checks">{currentCase.remainingSecondaryChecks}</div>
-              </div>
-              <div className="stat-box">
-                <div className="stat-label">Queue</div>
-                <div className="stat-value">{totalCases - currentCase.caseNumber + 1}</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Shift Log */}
-          <div className="shift-log">
-            <div className="shift-log-header">
-              SHIFT LOG
-            </div>
-            <div className="log-entries">
-              {shiftLog.map(entry => (
-                <div key={entry.id} className={`log-entry ${entry.type}`}>
-                  <div className="log-time">[{entry.time}]</div>
-                  <div className="log-action">{entry.action}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* BOTTOM PANEL - Actions */}
-        <div className="action-panel">
-          {/* Question Input */}
-          <div className="qa-section">
-            <div className="qa-label">
-              ◈ INTERROGATE WORKER
-              <span className="space-indicator-inline">
-                <kbd>SPACE</kbd> TO SPEAK
-              </span>
-            </div>
-            <div className="qa-input-wrapper">
+            {/* Question Input */}
+            <div className="question-area">
               <input
                 ref={questionInputRef}
                 type="text"
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleAskQuestion()}
-                placeholder="Type your question..."
+                onKeyDown={(e) => e.key === 'Enter' && handleAskQuestion()}
+                placeholder="Ask a question... (SPACE to focus)"
                 disabled={loading || showVerdict}
+                className="question-input"
               />
               <button
                 onClick={handleAskQuestion}
                 disabled={loading || showVerdict || !question.trim()}
-                className="action-button"
-                style={{ width: '80px', fontSize: '14px' }}
+                className="ask-button"
               >
                 ASK
               </button>
             </div>
           </div>
+        </div>
 
-          {/* Action Buttons */}
-          {!showVerdict && (
-            <>
+        {/* RIGHT PANEL - Decision Buttons */}
+        <div className="right-panel">
+          <div className="panel-header">DECISION</div>
+
+          {!showVerdict ? (
+            <div className="decision-buttons">
               <button
-                className="action-button btn-approve"
+                className="decision-btn btn-approve"
                 onClick={() => handleDecision(Decision.APPROVE)}
                 disabled={loading}
               >
-                <div className="button-icon">✓</div>
-                <div className="button-label">Approve</div>
+                <div className="btn-icon">✓</div>
+                <div className="btn-text">APPROVE</div>
+                <div className="btn-subtitle">Let them board</div>
               </button>
 
               <button
-                className="action-button btn-deny"
+                className="decision-btn btn-deny"
                 onClick={() => handleDecision(Decision.DENY)}
                 disabled={loading}
               >
-                <div className="button-icon">✗</div>
-                <div className="button-label">Deny</div>
+                <div className="btn-icon">✗</div>
+                <div className="btn-text">DENY</div>
+                <div className="btn-subtitle">Send them back</div>
               </button>
 
               <button
-                className="action-button btn-secondary"
+                className="decision-btn btn-manager"
                 onClick={() => {
                   audioManager.playSecondaryCheckSound();
-                  addLogEntry('Secondary biometric scan initiated', 'info');
-                  alert('Secondary check not yet implemented');
+                  alert('Manager check not yet implemented');
                 }}
                 disabled={loading || currentCase.remainingSecondaryChecks <= 0}
               >
-                <div className="button-icon">🔍</div>
-                <div className="button-label">Secondary</div>
-                <div className="button-quota">({currentCase.remainingSecondaryChecks})</div>
+                <div className="btn-icon">👤</div>
+                <div className="btn-text">CALL MANAGER</div>
+                <div className="btn-subtitle">{currentCase.remainingSecondaryChecks}/3 uses left</div>
               </button>
-            </>
+            </div>
+          ) : (
+            <div className="verdict-area">
+              <div className="verdict-text">{verdict}</div>
+              <button onClick={handleNextCase} className="next-case-btn">
+                NEXT CASE →
+              </button>
+            </div>
           )}
         </div>
       </div>
-
-      {/* Verdict Overlay */}
-      {showVerdict && (
-        <div className="verdict-overlay">
-          <div className="verdict-panel">
-            <div className="verdict-header">◈ VERDICT ◈</div>
-            <div className="verdict-text">{verdict}</div>
-            <button onClick={handleNextCase} className="btn-next">
-              NEXT CASE →
-            </button>
-          </div>
-        </div>
-      )}
     </>
   );
 }

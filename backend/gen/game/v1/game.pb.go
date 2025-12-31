@@ -318,9 +318,10 @@ func (x *SessionProgress) GetMessage() string {
 type SessionReady struct {
 	state                protoimpl.MessageState `protogen:"open.v1"`
 	SessionId            string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	Rules                []string               `protobuf:"bytes,2,rep,name=rules,proto3" json:"rules,omitempty"` // Daily rules
-	TotalCases           int32                  `protobuf:"varint,3,opt,name=total_cases,json=totalCases,proto3" json:"total_cases,omitempty"`
-	SecondaryChecksQuota int32                  `protobuf:"varint,4,opt,name=secondary_checks_quota,json=secondaryChecksQuota,proto3" json:"secondary_checks_quota,omitempty"` // e.g., 3
+	GameDate             string                 `protobuf:"bytes,2,opt,name=game_date,json=gameDate,proto3" json:"game_date,omitempty"` // Current game date (e.g., "2124-12-31")
+	Rules                []string               `protobuf:"bytes,3,rep,name=rules,proto3" json:"rules,omitempty"`                       // Daily rules
+	TotalCases           int32                  `protobuf:"varint,4,opt,name=total_cases,json=totalCases,proto3" json:"total_cases,omitempty"`
+	SecondaryChecksQuota int32                  `protobuf:"varint,5,opt,name=secondary_checks_quota,json=secondaryChecksQuota,proto3" json:"secondary_checks_quota,omitempty"` // e.g., 3
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -358,6 +359,13 @@ func (*SessionReady) Descriptor() ([]byte, []int) {
 func (x *SessionReady) GetSessionId() string {
 	if x != nil {
 		return x.SessionId
+	}
+	return ""
+}
+
+func (x *SessionReady) GetGameDate() string {
+	if x != nil {
+		return x.GameDate
 	}
 	return ""
 }
@@ -1235,14 +1243,15 @@ const file_game_v1_game_proto_rawDesc = "" +
 	"\x0fSessionProgress\x12\x18\n" +
 	"\acurrent\x18\x01 \x01(\x05R\acurrent\x12\x14\n" +
 	"\x05total\x18\x02 \x01(\x05R\x05total\x12\x18\n" +
-	"\amessage\x18\x03 \x01(\tR\amessage\"\x9a\x01\n" +
+	"\amessage\x18\x03 \x01(\tR\amessage\"\xb7\x01\n" +
 	"\fSessionReady\x12\x1d\n" +
 	"\n" +
-	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x14\n" +
-	"\x05rules\x18\x02 \x03(\tR\x05rules\x12\x1f\n" +
-	"\vtotal_cases\x18\x03 \x01(\x05R\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x1b\n" +
+	"\tgame_date\x18\x02 \x01(\tR\bgameDate\x12\x14\n" +
+	"\x05rules\x18\x03 \x03(\tR\x05rules\x12\x1f\n" +
+	"\vtotal_cases\x18\x04 \x01(\x05R\n" +
 	"totalCases\x124\n" +
-	"\x16secondary_checks_quota\x18\x04 \x01(\x05R\x14secondaryChecksQuota\"3\n" +
+	"\x16secondary_checks_quota\x18\x05 \x01(\x05R\x14secondaryChecksQuota\"3\n" +
 	"\x12GetNextCaseRequest\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\"\xad\x02\n" +

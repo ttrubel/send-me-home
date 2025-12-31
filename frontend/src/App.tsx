@@ -9,6 +9,7 @@ type GameState = 'start' | 'playing' | 'complete';
 
 interface SessionData {
   sessionId: string;
+  gameDate: string;
   rules: string[];
   totalCases: number;
 }
@@ -71,6 +72,7 @@ function App() {
         {gameState === 'playing' && sessionData && (
           <GameDesk
             sessionId={sessionData.sessionId}
+            gameDate={sessionData.gameDate}
             rules={sessionData.rules}
             totalCases={sessionData.totalCases}
             onComplete={handleSessionComplete}

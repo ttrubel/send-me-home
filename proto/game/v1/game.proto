@@ -49,9 +49,10 @@ message SessionProgress {
 
 message SessionReady {
   string session_id = 1;
-  repeated string rules = 2; // Daily rules
-  int32 total_cases = 3;
-  int32 secondary_checks_quota = 4; // e.g., 3
+  string game_date = 2; // Current game date (e.g., "2124-12-31")
+  repeated string rules = 3; // Daily rules
+  int32 total_cases = 4;
+  int32 secondary_checks_quota = 5; // e.g., 3
 }
 
 // ============================================================================

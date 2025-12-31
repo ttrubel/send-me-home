@@ -6,6 +6,7 @@ import './SessionStart.css';
 interface SessionStartProps {
   onSessionReady: (data: {
     sessionId: string;
+    gameDate: string;
     rules: string[];
     totalCases: number;
   }) => void;
@@ -34,6 +35,7 @@ function SessionStart({ onSessionReady }: SessionStartProps) {
           const ready = response.update.value;
           onSessionReady({
             sessionId: ready.sessionId,
+            gameDate: ready.gameDate,
             rules: ready.rules,
             totalCases: ready.totalCases,
           });
