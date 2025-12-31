@@ -55,7 +55,7 @@ temp/
 
 # GCP credentials (never commit these)
 *.json
-!tsconfig.json
+!tsconfig*.json
 !package.json
 !package-lock.json
 
