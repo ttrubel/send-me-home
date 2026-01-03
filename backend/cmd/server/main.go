@@ -32,10 +32,11 @@ func main() {
 	// - GOOGLE_API_KEY for AI Studio
 	geminiClient := gemini.NewClient()
 
-	firestoreClient, err := firestore.NewClient(cfg.FirestoreProjectID)
+	firestoreClient, err := firestore.NewClient(cfg.GCPProjectID)
 	if err != nil {
 		log.Fatalf("Failed to initialize Firestore: %v", err)
 	}
+	defer firestoreClient.Close()
 
 	// Initialize ElevenLabs client
 	elevenlabsClient := elevenlabs.NewClient(cfg.ElevenLabsAPIKey)

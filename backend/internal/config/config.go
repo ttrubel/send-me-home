@@ -8,9 +8,9 @@ import (
 )
 
 type Config struct {
-	Port               string
-	ElevenLabsAPIKey   string
-	FirestoreProjectID string
+	Port             string
+	ElevenLabsAPIKey string
+	GCPProjectID     string
 }
 
 func Load() *Config {
@@ -20,9 +20,9 @@ func Load() *Config {
 	}
 
 	return &Config{
-		Port:               getEnv("PORT", "8080"),
-		ElevenLabsAPIKey:   getEnv("ELEVENLABS_API_KEY", ""),
-		FirestoreProjectID: getEnv("FIRESTORE_PROJECT_ID", ""),
+		Port:             getEnv("PORT", "8080"),
+		ElevenLabsAPIKey: getEnv("ELEVENLABS_API_KEY", ""),
+		GCPProjectID:     getEnv("GOOGLE_CLOUD_PROJECT", ""),
 	}
 }
 

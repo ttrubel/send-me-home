@@ -1,0 +1,18 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Sessions collection - only accessible by backend service account
+    // Clients should never directly access Firestore
+    match /sessions/{sessionId} {
+      // Deny all client access - only service account can read/write
+      allow read, write: if false;
+    }
+
+    // Default deny all other collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
