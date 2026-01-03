@@ -2,216 +2,80 @@
 
 A voice-driven space transit desk game powered by AI.
 
-## Project Structure
-
-This is a monorepo containing:
-
-- **backend/** - Go backend service (Google Cloud Run)
-- **frontend/** - React TypeScript frontend
-- **proto/** - Protocol Buffer definitions
-- **docs/** - Additional documentation
-
 ## Prerequisites
 
-- Go 1.21+
-- Node.js 18+ and npm
-- Buf CLI (for proto code generation)
-- Make (optional, for convenience commands)
+- **Go 1.25+**: Download from [go.dev](https://go.dev/dl/)
+- **Node.js 18+**: Download from [nodejs.org](https://nodejs.org/)
+- **Buf CLI**: Install with `go install github.com/bufbuild/buf/cmd/buf@latest`
 
 ## Quick Start
 
-### Automated Setup
+### 1. Automated Setup
+
+Run the setup script from the project root:
 
 ```bash
 ./setup.sh
 ```
 
 This will:
-1. Install backend dependencies
-2. Install frontend dependencies
-3. Generate code from proto definitions
+1. Install backend and frontend dependencies.
+2. Generate code from the proto definitions.
 
-### Manual Setup
+### 2. Start the Servers
 
-1. **Generate code from proto:**
+#### Using `make` commands (recommended)
+
+In separate terminals, run:
 ```bash
-buf generate
-```
-
-2. **Start backend:**
-```bash
-cd backend
-go run cmd/server/main.go
-```
-
-3. **Start frontend (in another terminal):**
-```bash
-cd frontend
-npm run dev
-```
-
-## Deployment
-
-### Quick Deployment
-
-Use the interactive deployment script:
-
-```bash
-./deploy.sh
-```
-
-This will guide you through:
-1. Local deployment with Docker Compose
-2. Deployment to Google Cloud Run
-3. Building Docker images only
-
-### Docker Compose (Local)
-
-```bash
-# Configure environment
-cp .env.example .env
-# Edit .env with your credentials
-
-# Start application
-make docker-up
-
-# View logs
-docker-compose logs -f
-
-# Stop
-make docker-down
-```
-
-Access: http://localhost:8080
-
-**Note:** Single unified container serves both frontend and API.
-
-### Google Cloud Run (Production)
-
-```bash
-# Set your project ID
-export GCP_PROJECT_ID=your-project-id
-
-# Deploy
-make deploy-gcp
-```
-
-See [DEPLOY_SIMPLE.md](./DEPLOY_SIMPLE.md) for simplified deployment guide or [DEPLOYMENT.md](./DEPLOYMENT.md) for advanced options.
-
-## Development
-
-### Using Make Commands
-
-```bash
-# Install all dependencies
-make install
-
-# Run backend (terminal 1)
 make dev-backend
-
-# Run frontend (terminal 2)
+```
+```bash
 make dev-frontend
-
-# Build everything
-make build
-
-# Run tests
-make test
-
-# Clean build artifacts
-make clean
-
-# Docker commands
-make docker-build    # Build images
-make docker-up       # Start services
-make docker-down     # Stop services
 ```
 
-### API Documentation
+The backend will run on `http://localhost:8080` and the frontend on `http://localhost:3000`.
 
-The game uses Connect-RPC (gRPC-compatible) over HTTP/2.
+### 3. Play the Game
 
-**Available endpoints:**
-- `POST /game.v1.GameService/StartSession` - Start new game session (streaming)
-- `POST /game.v1.GameService/GetNextCase` - Get next case
-- `POST /game.v1.GameService/AskQuestion` - Ask NPC question (streaming)
-- `POST /game.v1.GameService/SecondaryCheck` - Perform verification check
-- `POST /game.v1.GameService/ResolveCase` - Submit decision
-- `POST /game.v1.GameService/GetSessionStatus` - Get session stats
-
-### Project Structure
-
-```
-send-me-home/
-├── backend/              # Go backend
-│   ├── cmd/server/       # Server entry point
-│   ├── internal/
-│   │   ├── api/          # Connect-RPC handlers
-│   │   ├── models/       # Data models
-│   │   ├── services/     # Gemini, Firestore, ElevenLabs
-│   │   └── config/       # Configuration
-│   └── gen/              # Generated Go code
-├── frontend/             # React TypeScript frontend
-│   ├── src/
-│   │   ├── components/   # React components
-│   │   ├── api/          # API client
-│   │   └── gen/          # Generated TS code
-│   └── public/
-├── proto/                # Protocol Buffer definitions
-│   └── game/v1/
-│       └── game.proto
-├── buf.yaml              # Buf configuration
-├── buf.gen.yaml          # Code generation config
-├── Makefile              # Build commands
-└── setup.sh              # Setup script
-```
+1. Open [http://localhost:3000](http://localhost:3000) in your browser.
+2. Click "Start Shift" to generate game cases.
+3. Inspect documents and make your decisions!
 
 ## Architecture
 
-- **Backend:** Go service with Connect-RPC
-  - Gemini AI for case generation and dialogue
-  - ElevenLabs for voice synthesis
-  - Firestore for session state (in-memory for now)
+- **Backend:** A Go service using [Connect-RPC](https://connectrpc.com/) for type-safe, high-performance APIs. It integrates with Gemini for AI-driven content and ElevenLabs for voice synthesis.
+- **Frontend:** A React application built with TypeScript and Vite. It uses a generated Connect-RPC client to communicate with the backend.
+- **API:** The entire API is defined using Protocol Buffers in `proto/game/v1/game.proto`. This single source of truth is used to generate both the Go server implementation and the TypeScript client.
 
-- **Frontend:** React + TypeScript + Vite
-  - Connect-RPC client (auto-generated)
-  - Real-time streaming support
-  - Document inspection UI
+## API Endpoints
 
-- **API:** Connect-RPC over HTTP/2
-  - Type-safe communication
-  - Streaming support for audio/progress
-  - Single proto definition
+The game uses the following RPCs:
+
+- `StartSession`: Initializes a new game session, generating all cases upfront.
+- `GetNextCase`: Fetches the next case for the player to review.
+- `AskQuestion`: Allows the player to ask questions to the NPC, returning a streaming response with text and audio.
+- `SecondaryCheck`: Performs a secondary verification check on a document.
+- `ResolveCase`: Submits the player's decision (approve or deny) for a case.
+- `GetSessionStatus`: Retrieves the current session status and score.
 
 ## Environment Variables
 
-Create a `.env` file in the project root (see `.env.example`):
+Create a `.env` file in the project root by copying `.env.example`.
 
 ```bash
 # Google Cloud / Vertex AI Configuration
+# Set GOOGLE_GENAI_USE_VERTEXAI to "false" to use mock data instead of the live API
 GOOGLE_GENAI_USE_VERTEXAI=true
 GOOGLE_CLOUD_PROJECT=your-gcp-project-id
 GCP_CREDENTIALS_PATH=./gcp-key.json
 
-# ElevenLabs API Key
+# ElevenLabs API Key for voice generation
 ELEVENLABS_API_KEY=your-elevenlabs-api-key
 
-# Firestore (optional)
-FIRESTORE_PROJECT_ID=your-firestore-project-id
-
-# Frontend API URL
+# URL for the frontend to connect to the backend API
 VITE_API_URL=http://localhost:8080
 ```
-
-For development without API keys, set `GOOGLE_GENAI_USE_VERTEXAI=false` to use mock data.
-
-## Documentation
-
-- [Deployment Guide](./DEPLOYMENT.md) - Detailed deployment instructions
-- [Game Design Document](./GAME.md) - Game mechanics and design
-- [Implementation Details](./IMPLEMENTATION.md) - Technical implementation
-- [Vertex AI Setup](./VERTEX_AI_SETUP.md) - Gemini AI integration
-- [Audio Implementation](./AUDIO_IMPLEMENTATION.md) - Voice and audio system
 
 ## Features
 
@@ -226,9 +90,9 @@ For development without API keys, set `GOOGLE_GENAI_USE_VERTEXAI=false` to use m
 - 15 cases per game session
 
 🔄 **In Progress:**
-- Firestore integration for persistent sessions
-- Advanced document visuals
-- Additional game mechanics
+- Secondary check UI modal
+- Document drag-and-drop
+- Animations/polish
 
 ## Performance
 
